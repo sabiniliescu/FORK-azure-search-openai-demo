@@ -263,7 +263,7 @@ async def chat(auth_claims: dict[str, Any]):
             question=user_question,
             user_id=user_id,
             conversation_id=session_state,
-            prompt=json.dumps(messages),  # Prompt-ul complet ca JSON
+            prompt=json.dumps(messages, ensure_ascii=False, indent=2),  # Prompt-ul complet ca JSON cu diacritice
             model_used=overrides.get("chatgpt_model", "unknown"),
             temperature=overrides.get("temperature"),
             session_id=session_state
@@ -338,7 +338,7 @@ async def chat_stream(auth_claims: dict[str, Any]):
             question=user_question,
             user_id=user_id,
             conversation_id=session_state,
-            prompt=json.dumps(messages),  # Prompt-ul complet ca JSON
+            prompt=json.dumps(messages, ensure_ascii=False, indent=2),  # Prompt-ul complet ca JSON cu diacritice
             model_used=overrides.get("chatgpt_model", "unknown"),
             temperature=overrides.get("temperature"),
             session_id=session_state

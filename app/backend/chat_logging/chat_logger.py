@@ -72,7 +72,25 @@ class ChatLogger:
         print(f"[CHAT LOG] Temperature: {temperature}")
         print(f"[CHAT LOG] Question: {question}")
         print(f"[CHAT LOG] Prompt Length: {len(prompt)} chars")
-        print(f"[CHAT LOG] Prompt Preview: {prompt[:200]}...")
+        
+        # Afișăm preview-ul prompt-ului într-un format mai citibil
+        try:
+            prompt_obj = json.loads(prompt) if isinstance(prompt, str) else prompt
+            if isinstance(prompt_obj, list) and len(prompt_obj) > 0:
+                # Afișăm doar ultimul mesaj pentru preview
+                last_message = prompt_obj[-1].get("content", "")
+                # Luăm primele 300 de caractere pentru preview
+                preview_text = last_message[:300] + "..." if len(last_message) > 300 else last_message
+                # Înlocuim \\n cu newlines reale
+                formatted_preview = preview_text.replace('\\n', '\n')
+                print(f"[CHAT LOG] Last Message Preview:")
+                for line in formatted_preview.split('\n'):
+                    print(f"    {line}")
+            else:
+                print(f"[CHAT LOG] Prompt Preview: {prompt[:200]}...")
+        except (json.JSONDecodeError, AttributeError):
+            print(f"[CHAT LOG] Prompt Preview: {str(prompt)[:200]}...")
+        
         print(f"{'='*80}")
     
     def finish_chat_log(
@@ -100,7 +118,15 @@ class ChatLogger:
         print(f"[CHAT LOG] Duration: {duration:.2f} seconds")
         print(f"[CHAT LOG] Tokens Used: {tokens_used}")
         print(f"[CHAT LOG] Answer Length: {len(answer)} chars")
-        print(f"[CHAT LOG] Answer Preview: {answer[:200]}...")
+        print(f"[CHAT LOG] Answer Preview:")
+        
+        # Afișăm răspunsul cu \n interpretate ca line breaks
+        answer_preview = answer[:800] + "..." if len(answer) > 800 else answer
+        # Gestionăm atât \n real cât și string literal \\n
+        formatted_answer = answer_preview.replace('\\n', '\n')
+        for line in formatted_answer.split('\n'):
+            print(f"    {line}")
+        
         print(f"{'='*80}")
         
         # Salvează log-ul complet (pentru acum doar în terminal)
@@ -138,7 +164,14 @@ class ChatLogger:
         print(f"\n{'='*100}")
         print("[COMPLETE CHAT LOG]")
         print(f"Question: {log_entry.question}")
-        print(f"Answer: {log_entry.answer}")
+        print("Answer:")
+        
+        # Afișăm răspunsul complet cu \n interpretate ca line breaks
+        # Gestionăm atât \n real cât și string literal \\n
+        formatted_answer = log_entry.answer.replace('\\n', '\n')
+        for line in formatted_answer.split('\n'):
+            print(f"    {line}")
+        
         print(f"User ID: {log_entry.user_id}")
         print(f"Conversation ID: {log_entry.conversation_id}")
         print(f"Session ID: {log_entry.session_id}")
@@ -154,7 +187,27 @@ class ChatLogger:
         print(f"Tokens Used: {log_entry.tokens_used}")
         print(f"Feedback: {log_entry.feedback}")
         print(f"Feedback Text: {log_entry.feedback_text}")
-        print(f"Prompt: {log_entry.prompt[:500]}...")
+        
+        # Afișăm prompt-ul într-un format mai frumos
+        print("Prompt (formatted):")
+        try:
+            prompt_obj = json.loads(log_entry.prompt) if isinstance(log_entry.prompt, str) else log_entry.prompt
+            # Afișăm fiecare mesaj separat cu formatare îmbunătățită
+            if isinstance(prompt_obj, list):
+                for i, message in enumerate(prompt_obj):
+                    print(f"  Message {i+1} ({message.get('role', 'unknown')}):")
+                    content = message.get('content', '')
+                    # Înlocuim \\n cu newlines reale pentru afișare
+                    formatted_content = content.replace('\\n', '\n')
+                    for line in formatted_content.split('\n'):
+                        print(f"    {line}")
+                    print()  # Linie goală între mesaje
+            else:
+                formatted_prompt = json.dumps(prompt_obj, ensure_ascii=False, indent=2)
+                print(formatted_prompt)
+        except (json.JSONDecodeError, AttributeError):
+            print(f"Prompt: {log_entry.prompt}")
+        
         print(f"{'='*100}\n")
 
 
