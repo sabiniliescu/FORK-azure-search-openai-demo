@@ -58,6 +58,7 @@ export function Component(): JSX.Element {
     const [isPlaying, setIsPlaying] = useState(false);
     const [showAgenticRetrievalOption, setShowAgenticRetrievalOption] = useState<boolean>(false);
     const [useAgenticRetrieval, setUseAgenticRetrieval] = useState<boolean>(false);
+    const [showDeveloperFeatures, setShowDeveloperFeatures] = useState<boolean>(false);
 
     const lastQuestionRef = useRef<string>("");
 
@@ -103,6 +104,7 @@ export function Component(): JSX.Element {
             setShowSpeechOutputAzure(config.showSpeechOutputAzure);
             setShowAgenticRetrievalOption(config.showAgenticRetrievalOption);
             setUseAgenticRetrieval(config.showAgenticRetrievalOption);
+            setShowDeveloperFeatures(config.showDeveloperFeatures);
             if (config.showAgenticRetrievalOption) {
                 setRetrieveCount(10);
             }
@@ -286,7 +288,7 @@ export function Component(): JSX.Element {
             <div className={styles.askTopSection}>
                 <div className={styles.commandsContainer}>
                     {showUserUpload && <UploadFile className={styles.commandButton} disabled={!loggedIn} />}
-                    <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />
+                    {showDeveloperFeatures && <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />}
                 </div>
                 <h1 className={styles.askTitle}>{t("askTitle")}</h1>
                 <div className={styles.askQuestionInput}>
@@ -319,6 +321,7 @@ export function Component(): JSX.Element {
                             onSupportingContentClicked={() => onToggleTab(AnalysisPanelTabs.SupportingContentTab)}
                             showSpeechOutputAzure={showSpeechOutputAzure}
                             showSpeechOutputBrowser={showSpeechOutputBrowser}
+                            showDeveloperFeatures={showDeveloperFeatures}
                         />
                     </div>
                 )}

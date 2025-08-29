@@ -551,9 +551,9 @@ module acaBackend 'core/host/container-app-upsert.bicep' = if (deploymentTarget 
     identityType: 'UserAssigned'
     tags: union(tags, { 'azd-service-name': 'backend' })
     targetPort: 8000
-    containerCpuCoreCount: '1.0'
-    containerMemory: '2Gi'
-    containerMinReplicas: 0
+    containerCpuCoreCount: '2.0'
+    containerMemory: '4Gi'
+    containerMinReplicas: 1
     allowedOrigins: allowedOrigins
     env: union(appEnvVariables, {
       // For using managed identity to access Azure resources. See https://github.com/microsoft/azure-container-apps/issues/442
@@ -781,7 +781,9 @@ module searchService 'core/search/search-services.bicep' = {
     name: !empty(searchServiceName) ? searchServiceName : 'gptkb-${resourceToken}'
     location: !empty(searchServiceLocation) ? searchServiceLocation : location
     tags: tags
-    disableLocalAuth: true
+    authOptions: {
+      aadOrApiKeyAuthOption: {}
+    }
     sku: {
       name: searchServiceSkuName
     }

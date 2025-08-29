@@ -37,6 +37,23 @@ export function parseAnswerToHtml(answer: ChatAppResponse, isStreaming: boolean,
     // Trim any whitespace from the end of the answer after removing follow-up questions
     let parsedAnswer = answer.message.content.trim();
 
+    console.log("AnswerParser: answer.context =", answer.context);
+    const linkMapping = answer.context?.link_mapping;
+    console.log("AnswerParser: linkMapping =", linkMapping);
+
+    // Replace link IDs with actual URLs if link mapping is available
+    if (linkMapping) {
+        // Replace markdown links that use link IDs: [text](linkX) -> [text](actual_url)
+        parsedAnswer = parsedAnswer.replace(/\[([^\]]+)\]\((link\d+)\)/g, (match, text, linkId) => {
+            console.log("AnswerParser: found markdown link:", match, "text:", text, "linkId:", linkId);
+            if (linkMapping[linkId]) {
+                console.log("AnswerParser: replacing", linkId, "with", linkMapping[linkId]);
+                return `[${text}](${linkMapping[linkId]})`;
+            }
+            return match;
+        });
+    }
+
     // Omit a citation that is still being typed during streaming
     if (isStreaming) {
         let lastIndex = parsedAnswer.length;

@@ -1,169 +1,179 @@
 {
-    "pageTitle": "Azure OpenAI + AI Arama",
-    "headerTitle": "Azure OpenAI + AI Arama",
-    "chat": "Sohbet",
-    "qa": "Bir soru sor",
-    "login": "Giriş yap",
-    "logout": "Çıkış yap",
-    "clearChat": "Sohbeti temizle",
+    "pageTitle": "MihAI Web",
+    "headerTitle": "MihAI. Stie tot despre documentele Libra",
+    "chat": "",
+    "qa": "",
+    "login": "Login",
+    "logout": "Logout",
+    "clearChat": "Incepe o nouă conversație",
     "history": {
-        "chatHistory": "Sohbet geçmişi",
-        "openChatHistory": "Sohbet geçmişini aç",
-        "noHistory": "Sohbet geçmişi yok",
-        "deleteModalTitle": "Sohbet geçmişini sil",
-        "deleteModalDescription": "Bu işlem geri alınamaz. Bu sohbet geçmişini silmek istiyor musunuz?",
-        "deleteLabel": "Sil",
-        "cancelLabel": "İptal",
-        "today": "Bugün",
-        "yesterday": "Dün",
-        "last7days": "Son 7 gün",
-        "last30days": "Son 30 gün"
+        "chatHistory": "Istorc conversație",
+        "openChatHistory": "Open chat history",
+        "noHistory": "No chat history",
+        "deleteModalTitle": "Delete chat history",
+        "deleteModalDescription": "This action cannot be undone. Delete this chat history?",
+        "deleteLabel": "Delete",
+        "cancelLabel": "Cancel",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "last7days": "Last 7 days",
+        "last30days": "Last 30 days"
     },
     "upload": {
-        "fileLabel": "Dosya yükle:",
-        "uploadedFilesLabel": "Önceden yüklenmiş dosyalar:",
-        "noFilesUploaded": "Henüz dosya yüklenmedi",
-        "loading": "Yükleniyor...",
-        "manageFileUploads": "Dosya yüklemelerini yönet",
-        "uploadingFiles": "Dosyalar yükleniyor...",
-        "uploadedFileError": "Dosya yüklenirken hata oluştu - lütfen tekrar deneyin veya yönetici ile iletişime geçin.",
-        "deleteFile": "Dosyayı sil",
-        "deletingFile": "Dosya siliniyor...",
-        "errorDeleting": "Silme hatası.",
-        "fileDeleted": "Dosya silindi"
+        "fileLabel": "Upload file:",
+        "uploadedFilesLabel": "Previously uploaded files:",
+        "noFilesUploaded": "No files uploaded yet",
+        "loading": "Loading...",
+        "manageFileUploads": "Manage file uploads",
+        "uploadingFiles": "Uploading files...",
+        "uploadedFileError": "Error uploading file - please try again or contact admin.",
+        "deleteFile": "Delete file",
+        "deletingFile": "Deleting file...",
+        "errorDeleting": "Error deleting.",
+        "fileDeleted": "File deleted"
     },
-    "developerSettings": "Geliştirici ayarları",
+    "developerSettings": "Developer settings",
 
-    "chatEmptyStateTitle": "Verilerinizle sohbet edin",
-    "chatEmptyStateSubtitle": "Bir soru sorun veya bir örnek deneyin",
+    "chatEmptyStateTitle": "Chat with your data",
+    "chatEmptyStateSubtitle": "Întreabă-mă orice sau încearcă unul dintre exemplele de mai jos pentru a începe",
     "defaultExamples": {
-        "1": "Northwind Health Plus planımda standart planda olmayan neler var?",
-        "2": "Performans değerlendirmesinde ne olur?",
-        "3": "Bir Ürün Yöneticisi ne yapar?",
-        "placeholder": "Yeni bir soru yazın (ör. planım yıllık göz muayenelerini kapsıyor mu?)"
+        "1": "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+        "2": "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+        "3": "Îmi doresc să promovez în carieră, cum pot face asta?",
+        "placeholder": "Adreseaza-mi o intrebare despre documentele Libra"
     },
-    "askTitle": "Verilerinize sorun",
+    "askTitle": "Ask your data",
     "gpt4vExamples": {
-        "1": "Faiz oranları ve GSYİH'nin finansal piyasalar üzerindeki etkisini karşılaştırın.",
-        "2": "Önümüzdeki beş yıl için S&P 500 endeksinin beklenen trendi nedir? Geçmiş S&P 500 performansı ile karşılaştırın",
-        "3": "Petrol fiyatları ile borsa trendleri arasında herhangi bir korelasyon bulabilir misiniz?",
-        "placeholder": "Örnek: Planım yıllık göz muayenelerini kapsıyor mu?"
+        "1": "Compare the impact of interest rates and GDP in financial markets.",
+        "2": "What is the expected trend for the S&P 500 index over the next five years? Compare it to the past S&P 500 performance",
+        "3": "Can you identify any correlation between oil prices and stock market trends?",
+        "placeholder": "Example: Does my plan cover annual eye exams?"
     },
-    "generatingAnswer": "Cevap oluşturuluyor",
-    "citationWithColon": "Alıntı:",
-    "followupQuestions": "Takip soruları:",
+    "generatingAnswer": "Generating answer",
+    "citationWithColon": "Citation:",
+    "followupQuestions": "Follow-up questions:",
 
     "tooltips": {
-        "submitQuestion": "Soruyu gönder",
-        "askWithVoice": "Sesle soru sor",
-        "stopRecording": "Kaydı durdur",
-        "showThoughtProcess": "Düşünce sürecini göster",
-        "showSupportingContent": "Destekleyici içeriği göster",
-        "speakAnswer": "Cevabı seslendir",
-        "info": "Bilgi",
-        "save": "Kaydet",
-        "copy": "Kopyala",
-        "copied": "Kopyalandı!"
+        "submitQuestion": "Submit question",
+        "askWithVoice": "Ask question with voice",
+        "stopRecording": "Stop recording question",
+        "showThoughtProcess": "Show thought process",
+        "showSupportingContent": "Show supporting content",
+        "speakAnswer": "Speak answer",
+        "info": "Info",
+        "save": "Save",
+        "copy": "Copy",
+        "copied": "Copied!"
     },
 
-    "headerTexts": {
-        "thoughtProcess": "Düşünce Süreci",
-        "supportingContent": "Destekleyici İçerik",
-        "citation": "Alıntı"
+    "headerTexts":{
+        "thoughtProcess": "Thought Process",
+        "supportingContent": "Supporting Content",
+        "citation": "Citation"
     },
 
     "labels": {
-        "toggleMenu": "Menüyü değiştir",
-        "languagePicker": "Dilini seç",
-        "headerText": "Cevap oluşturmayı yapılandır",
-        "closeButton": "Kapat",
-        "promptTemplate": "Prompt şablonunu geçersiz kıl",
-        "temperature": "Sıcaklık",
+        "toggleMenu": "Toggle menu",
+        "languagePicker": "Select your language",
+        "headerText": "Configure answer generation",
+        "closeButton": "Close",
+        "promptTemplate": "Override prompt template",
+        "temperature": "Temperature",
         "seed": "Seed",
-        "minimumSearchScore": "Minimum arama skoru",
-        "minimumRerankerScore": "Minimum yeniden sıralayıcı skoru",
-        "retrieveCount": "Bu kadar arama sonucu getir:",
-        "includeCategory": "Kategori dahil et",
+        "minimumSearchScore": "Minimum search score",
+        "minimumRerankerScore": "Minimum reranker score",
+        "retrieveCount": "Retrieve this many search results:",
+        "maxSubqueryCount": "Max subqueries",
+        "resultsMergeStrategy": "Results merge strategy",
+        "resultsMergeStrategyOptions": {
+            "interleaved": "Interleaved",
+            "descending": "Descending"
+        },
+        "includeCategory": "Include category",
         "includeCategoryOptions": {
-            "all": "Hepsi"
+            "all": "All"
         },
-        "excludeCategory": "Kategori hariç tut",
-        "useSemanticRanker": "Anlamsal sıralayıcı kullan",
-        "useSemanticCaptions": "Anlamsal altyazılar kullan",
-        "useQueryRewriting": "Bilgi erişimi için sorgu yeniden yazımını kullanın",
-        "reasoningEffort": "Akıl yürütme çabası",
+        "excludeCategory": "Exclude category",
+        "useSemanticRanker": "Use semantic ranker for retrieval",
+        "useSemanticCaptions": "Use semantic captions",
+        "useQueryRewriting": "Use query rewriting for retrieval",
+        "reasoningEffort": "Reasoning effort",
         "reasoningEffortOptions": {
-            "low": "Düşük",
-            "medium": "Orta",
-            "high": "Yüksek"
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High"
         },
-        "useSuggestFollowupQuestions": "Takip soruları öner",
-        "useAgenticRetrieval": "Ajan temelli getirim kullan",
-        "useGPT4V": "GPT vizyon modelini kullan",
+        "useSuggestFollowupQuestions": "Suggest follow-up questions",
+        "useAgenticRetrieval": "Use agentic retrieval",
+        "useGPT4V": "Use GPT vision model",
         "gpt4VInput": {
-            "label": "GPT vizyon modeli girdileri",
+            "label": "GPT vision model inputs",
             "options": {
-                "textAndImages": "Görseller ve metin",
-                "images": "Görseller",
-                "texts": "Metin"
+                "textAndImages": "Images and text",
+                "images": "Images",
+                "texts": "Text"
             }
         },
         "retrievalMode": {
-            "label": "Getirme modu",
+            "label": "Retrieval mode",
             "options": {
-                "hybrid": "Vektörler + Metin (Hibrit)",
-                "vectors": "Vektörler",
-                "texts": "Metin"
+                "hybrid": "Vectors + Text (Hybrid)",
+                "vectors": "Vectors",
+                "texts": "Text"
             }
         },
         "vector": {
-            "label": "Vektör alanları (Çoklu sorgu vektör araması)",
+            "label": "Vector fields (Multi-query vector search)",
             "options": {
-                "embedding": "Metin Gömüleri",
-                "imageEmbedding": "Görsel Gömüleri",
-                "both": "Metin ve Görsel gömüleri"
+                "embedding": "Text Embeddings",
+                "imageEmbedding": "Image Embeddings",
+                "both": "Text and Image embeddings"
             }
         },
-        "useOidSecurityFilter": "OID güvenlik filtresini kullan",
-        "useGroupsSecurityFilter": "Grup güvenlik filtresini kullan",
-        "shouldStream": "Sohbet yanıtlarını akış olarak gönder"
+        "useOidSecurityFilter": "Use oid security filter",
+        "useGroupsSecurityFilter": "Use groups security filter",
+        "shouldStream": "Stream chat completion responses"
     },
 
     "helpTexts": {
         "promptTemplate":
-            "Soru ve arama sonuçlarına dayalı olarak cevabı oluşturmak için kullanılan prompt'u geçersiz kılar. Mevcut prompt'u genişletmek yerine tamamını değiştirmek için prompt'unuza '>>>' ile başlayın.",
+            "Overrides the prompt used to generate the answer based on the question and search results. To append to existing prompt instead of replace whole prompt, start your prompt with '>>>'.",
         "temperature":
-            "Cevabı oluşturan dil modeline yapılan isteğin sıcaklığını ayarlar. Daha yüksek sıcaklıklar daha yaratıcı cevaplar verir, ancak daha az gerçekçi olabilirler.",
-        "seed": "Modelin yanıtlarının tekrarlanabilirliğini artırmak için bir seed ayarlar. Seed herhangi bir tam sayı olabilir.",
+            "Sets the temperature of the request to the LLM that generates the answer. Higher temperatures result in more creative responses, but they may be less grounded.",
+        "seed": "Sets a seed to improve the reproducibility of the model's responses. The seed can be any integer.",
         "searchScore":
-             "Azure AI arama sonuçları için minimum skoru ayarlar. Skor aralığı, yalnızca vektörler, yalnızca metin veya hibrit (varsayılan) arama moduna bağlı olarak değişir.",
+             "Sets a minimum score for search results coming back from Azure AI search. The score range depends on whether you're using hybrid (default), vectors only, or text only.",
         "rerankerScore":
-             "Anlamsal sıralayıcıdan gelen arama sonuçları için minimum skoru ayarlar. Skor her zaman 0-4 arasında değişir. Daha yüksek skor, sonucun soruya daha anlamsal olarak uygun olduğunu gösterir.",
+             "Sets a minimum score for search results coming back from the semantic reranker. The score always ranges between 0-4. The higher the score, the more semantically relevant the result is to the question.",
         "retrieveNumber":
-             "Azure AI arama sonuçlarından getirilecek sonuç sayısını ayarlar. Daha fazla sonuç doğru cevabı bulma olasılığını artırabilir, ancak modelin 'ortada kaybolmasına' da neden olabilir.",
+             "Sets the number of search results to retrieve from Azure AI search. More results may increase the likelihood of finding the correct answer, but may lead to the model getting 'lost in the middle'.",
+        "maxSubqueryCount":
+            "Sets the maximum number of subqueries to use for the agentic retrieval query plan.",
+        "resultsMergeStrategy":
+            "Sets the strategy for merging results from multiple subqueries. Interleaved picks the top results from each subquery in round robin order, while descending sorts all results by reranker score.",
         "includeCategory":
-            "Arama sonuçlarına dahil edilecek bir kategoriyi belirtir. Varsayılan veri setinde kategori yoktur.",
-        "excludeCategory":
-            "Arama sonuçlarından hariç tutulacak bir kategoriyi belirtir. Varsayılan veri setinde kategori yoktur.",
-        "useSemanticReranker":
-            "Azure AI Arama anlamsal sıralayıcısını etkinleştirir, bu model arama sonuçlarını kullanıcının sorgusuna anlamsal benzerliğe göre sıralar.",
-        "useSemanticCaptions":
-            "Tam arama sonucu yerine anlamsal altyazıları dil modeline gönderir. Anlamsal sıralama sırasında her arama sonucu için bir anlamsal altyazı çıkarılır.",
+            "Specifies a category to include in the search results. There are no categories used in the default data set.",
+         "excludeCategory":
+            "Specifies a category to exclude from the search results. There are no categories used in the default data set.",
+         "useSemanticReranker":
+            "Enables the Azure AI Search semantic ranker, a model that re-ranks search results based on semantic similarity to the user's query.",
         "useQueryRewriting":
-            "Azure AI arama sonuçlarını iyileştirmek için kullanıcı sorgusunu değiştiren bir işlem. Anlamsal sıralayıcının etkin olmasını gerektirir.",
+            "Enables Azure AI Search query rewriting, a process that modifies the user's query to improve search results. Requires semantic ranker to be enabled.",
         "reasoningEffort":
-            "Dil modeli için akıl yürütme çabasını ayarlar. Daha yüksek değerler daha fazla akıl yürütme ile sonuçlanır, ancak yanıt oluşturmak daha uzun sürebilir. Varsayılan orta seviyedir.",
-        "suggestFollowupQuestions": "Kullanıcının sorusuna dayalı olarak dil modelinden takip soruları önermesini ister.",
-        "useGPT4Vision": "Görseller ve metinlerden oluşan indekslere dayalı olarak yanıtlar oluşturmak için GPT-4-Turbo ile Vision kullanır.",
+            "Sets the reasoning effort for the LLM. Higher values result in more reasoning, but may take longer to generate a response. The default is medium.",
+        "useSemanticCaptions":
+             "Sends semantic captions to the LLM instead of the full search result. A semantic caption is extracted from a search result during the process of semantic ranking.",
+        "suggestFollowupQuestions": "Asks the LLM to suggest follow-up questions based on the user's query.",
+         "useGPT4Vision": "Uses GPT-4-Turbo with Vision to generate responses based on images and text from the index.",
         "vectorFields":
-            "Azure AI Arama İndeksinde hangi gömme alanlarının aranacağını belirtir: 'Görseller ve metin', yalnızca 'Görseller' veya yalnızca 'Metin'.",
+            "Specifies which embedding fields in the Azure AI Search Index will be searched, both the 'Images and text' embeddings, 'Images' only, or 'Text' only.",
         "gpt4VisionInputs":
-            "Vizyon modeline ne gönderileceğini ayarlar. 'Görseller ve metin' her ikisini de gönderir, 'Görseller' yalnızca görselleri, 'Metin' yalnızca metni gönderir.",
+            "Sets what will be sent to the vision model. 'Images and text' sends both images and text to the model, 'Images' sends only images, and 'Text' sends only text.",
         "retrievalMode":
-            "Azure AI arama sorgusu için getirme modunu ayarlar. `Vektörler + Metin (Hibrit)` vektör araması ve tam metin aramasını kullanır, `Vektörler` yalnızca vektör aramasını, `Metin` yalnızca tam metin aramasını kullanır. Hibrit genellikle en iyisidir.",
-        "streamChat": "Yanıt oluşturulurken sohbet arayüzüne gerçek zamanlı olarak yanıtı sürekli olarak gönderir.",
-        "useOidSecurityFilter": "Kimliği doğrulanmış kullanıcının OID'sine göre arama sonuçlarını filtreler.",
-        "useGroupsSecurityFilter": "Kimliği doğrulanmış kullanıcının gruplarına göre arama sonuçlarını filtreler.",
+            "Sets the retrieval mode for the Azure AI Search query. `Vectors + Text (Hybrid)` uses a combination of vector search and full text search, `Vectors` uses only vector search, and `Text` uses only full text search. Hybrid is generally optimal.",
+        "streamChat": "Continuously streams the response to the chat UI as it is generated.",
+        "useOidSecurityFilter": "Filter search results based on the authenticated user's OID.",
+        "useGroupsSecurityFilter": "Filter search results based on the authenticated user's groups.",
         "useAgenticRetrieval": "Use agentic retrieval from Azure AI Search for multi-query planning. Always uses semantic ranker."
     }
 }

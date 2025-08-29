@@ -5,6 +5,7 @@ import logging
 import mimetypes
 import os
 import time
+import sys
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any, Union, cast
@@ -47,6 +48,9 @@ from quart import (
     request,
     send_file,
     send_from_directory,
+    Response,
+    request,
+    jsonify,
 )
 from quart_cors import cors
 
@@ -70,6 +74,7 @@ from config import (
     CONFIG_CHAT_VISION_APPROACH,
     CONFIG_CREDENTIAL,
     CONFIG_DEFAULT_REASONING_EFFORT,
+    CONFIG_DEVELOPER_FEATURES_ENABLED,
     CONFIG_GPT4V_DEPLOYED,
     CONFIG_INGESTER,
     CONFIG_LANGUAGE_PICKER_ENABLED,
@@ -285,6 +290,14 @@ async def chat_stream(auth_claims: dict[str, Any]):
     except Exception as error:
         return error_response(error, "/chat")
 
+@bp.route("/api/feedback", methods=["POST"])
+async def feedback():
+    data = await request.get_json()
+    answer_index = data.get("answerIndex")
+    feedback_type = data.get("feedbackType")
+    feedback_text = data.get("feedbackText")
+    print(f"[FEEDBACK] index={answer_index}, type={feedback_type}, text={feedback_text}", file=sys.stdout)
+    return jsonify({"status": "ok"})
 
 # Send MSAL.js settings to the client UI
 @bp.route("/auth_setup", methods=["GET"])
@@ -312,6 +325,7 @@ def config():
             "showChatHistoryBrowser": current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED],
             "showChatHistoryCosmos": current_app.config[CONFIG_CHAT_HISTORY_COSMOS_ENABLED],
             "showAgenticRetrievalOption": current_app.config[CONFIG_AGENTIC_RETRIEVAL_ENABLED],
+            "showDeveloperFeatures": current_app.config[CONFIG_DEVELOPER_FEATURES_ENABLED],
         }
     )
 
@@ -465,8 +479,8 @@ async def setup_clients():
     AZURE_CLIENT_APP_ID = os.getenv("AZURE_CLIENT_APP_ID")
     AZURE_AUTH_TENANT_ID = os.getenv("AZURE_AUTH_TENANT_ID", AZURE_TENANT_ID)
 
-    KB_FIELDS_CONTENT = os.getenv("KB_FIELDS_CONTENT", "content")
-    KB_FIELDS_SOURCEPAGE = os.getenv("KB_FIELDS_SOURCEPAGE", "sourcepage")
+    KB_FIELDS_CONTENT = "chunk" # os.getenv("KB_FIELDS_CONTENT", "chunk")
+    KB_FIELDS_SOURCEPAGE = "link" # os.getenv("KB_FIELDS_SOURCEPAGE", "page_number")
 
     AZURE_SEARCH_QUERY_LANGUAGE = os.getenv("AZURE_SEARCH_QUERY_LANGUAGE") or "en-us"
     AZURE_SEARCH_QUERY_SPELLER = os.getenv("AZURE_SEARCH_QUERY_SPELLER") or "lexicon"
@@ -488,6 +502,8 @@ async def setup_clients():
     USE_CHAT_HISTORY_BROWSER = os.getenv("USE_CHAT_HISTORY_BROWSER", "").lower() == "true"
     USE_CHAT_HISTORY_COSMOS = os.getenv("USE_CHAT_HISTORY_COSMOS", "").lower() == "true"
     USE_AGENTIC_RETRIEVAL = os.getenv("USE_AGENTIC_RETRIEVAL", "").lower() == "true"
+    ENABLE_DEBUG_LOGGING = os.getenv("ENABLE_DEBUG_LOGGING", "true").lower() == "true"
+    ENABLE_DEVELOPER_FEATURES = os.getenv("ENABLE_DEVELOPER_FEATURES", "true").lower() == "true"
 
     # WEBSITE_HOSTNAME is always set by App Service, RUNNING_IN_PRODUCTION is set in main.bicep
     RUNNING_ON_AZURE = os.getenv("WEBSITE_HOSTNAME") is not None or os.getenv("RUNNING_IN_PRODUCTION") is not None
@@ -682,6 +698,7 @@ async def setup_clients():
     current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED] = USE_CHAT_HISTORY_BROWSER
     current_app.config[CONFIG_CHAT_HISTORY_COSMOS_ENABLED] = USE_CHAT_HISTORY_COSMOS
     current_app.config[CONFIG_AGENTIC_RETRIEVAL_ENABLED] = USE_AGENTIC_RETRIEVAL
+    current_app.config[CONFIG_DEVELOPER_FEATURES_ENABLED] = ENABLE_DEVELOPER_FEATURES
 
     prompt_manager = PromptyManager()
 
@@ -730,6 +747,7 @@ async def setup_clients():
         query_speller=AZURE_SEARCH_QUERY_SPELLER,
         prompt_manager=prompt_manager,
         reasoning_effort=OPENAI_REASONING_EFFORT,
+        enable_debug_logging=ENABLE_DEBUG_LOGGING,
     )
 
     if USE_GPT4V:

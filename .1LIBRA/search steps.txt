@@ -1,0 +1,9 @@
+azd auth login
+azd env new
+azd env set USE_CHAT_HISTORY_COSMOS true
+azd env set AZURE_USE_AUTHENTICATION true
+azd env set AZURE_AUTH_TENANT_ID "52d32ffe-bfad-4f92-b437-e29121332333"
+
+I just want to enable chat history and thus have logging in the cosmos db,
+but in order to do so is it also mandatory to esure acces control on the 
+search index?

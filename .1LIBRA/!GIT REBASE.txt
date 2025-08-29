@@ -1,0 +1,29 @@
+Scopul este sa actualizez templateul cu noile dezvoltari din github,
+fara sa suprascriu customizarile mele
+
+git config --global user.name "Sabin Iliescu"
+git config --global user.email "sabin.iliescu@librabank.ro"
+
+1 clonez solutia de pe azure devops
+2 aplic customizarile pe branchul de proiect
+3 fac push la customizari 
+
+--1 stage changes
+git add .
+
+--2 commit
+git commit -m "Customizari Journey chatapproach.py"
+
+--2 push
+git push origin Journey_Sabin
+
+git remote add github https://github.com/Azure-Samples/azure-search-openai-demo.git
+git fetch github main:main
+git checkout main
+git push origin main
+git checkout Journey_Sabin
+git rebase main
+git push origin Journey_Sabin --force
+--Unfortunately, you cannot push a rebased branch without using --force, because rebasing rewrites the commit history of the branch, which makes your local branch's history incompatible with the remote branch
+
+

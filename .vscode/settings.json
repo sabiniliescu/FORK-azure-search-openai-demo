@@ -30,5 +30,10 @@
         "tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.defaultInterpreterPath": "C:/Users/sabin.iliescu/Anaconda3/envs/python313/python.exe",
+    "python.terminal.activateEnvironment": false,
+    "python.terminal.activateEnvInCurrentTerminal": false,
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "python.envFile": "${workspaceFolder}/.env"
 }

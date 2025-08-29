@@ -78,6 +78,7 @@ const Chat = () => {
     const [answers, setAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
     const [streamedAnswers, setStreamedAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
     const [speechUrls, setSpeechUrls] = useState<(string | null)[]>([]);
+    const [isHistoryChat, setIsHistoryChat] = useState<boolean>(false); // Track if showing history chat
 
     const [showGPT4VOptions, setShowGPT4VOptions] = useState<boolean>(false);
     const [showSemanticRankerOption, setShowSemanticRankerOption] = useState<boolean>(false);
@@ -93,6 +94,7 @@ const Chat = () => {
     const [showChatHistoryCosmos, setShowChatHistoryCosmos] = useState<boolean>(false);
     const [showAgenticRetrievalOption, setShowAgenticRetrievalOption] = useState<boolean>(false);
     const [useAgenticRetrieval, setUseAgenticRetrieval] = useState<boolean>(false);
+    const [showDeveloperFeatures, setShowDeveloperFeatures] = useState<boolean>(false);
 
     const audio = useRef(new Audio()).current;
     const [isPlaying, setIsPlaying] = useState(false);
@@ -136,6 +138,7 @@ const Chat = () => {
             setShowChatHistoryCosmos(config.showChatHistoryCosmos);
             setShowAgenticRetrievalOption(config.showAgenticRetrievalOption);
             setUseAgenticRetrieval(config.showAgenticRetrievalOption);
+            setShowDeveloperFeatures(config.showDeveloperFeatures);
             if (config.showAgenticRetrievalOption) {
                 setRetrieveCount(10);
             }
@@ -202,6 +205,7 @@ const Chat = () => {
         setIsLoading(true);
         setActiveCitation(undefined);
         setActiveAnalysisPanelTab(undefined);
+        setIsHistoryChat(false); // Reset history chat flag for new conversations
 
         const token = client ? await getToken(client) : undefined;
 
@@ -287,6 +291,7 @@ const Chat = () => {
         setStreamedAnswers([]);
         setIsLoading(false);
         setIsStreaming(false);
+        setIsHistoryChat(false); // Reset history chat flag
     };
 
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
@@ -410,7 +415,7 @@ const Chat = () => {
                 <div className={styles.commandsContainer}>
                     <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading} />
                     {showUserUpload && <UploadFile className={styles.commandButton} disabled={!loggedIn} />}
-                    <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />
+                    {showDeveloperFeatures && <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />}
                 </div>
             </div>
             <div className={styles.chatRoot} style={{ marginLeft: isHistoryPanelOpen ? "300px" : "0" }}>
@@ -446,6 +451,8 @@ const Chat = () => {
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
                                                 showSpeechOutputAzure={showSpeechOutputAzure}
                                                 showSpeechOutputBrowser={showSpeechOutputBrowser}
+                                                showFeedback={!isHistoryChat}
+                                                showDeveloperFeatures={showDeveloperFeatures}
                                             />
                                         </div>
                                     </div>
@@ -469,6 +476,8 @@ const Chat = () => {
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
                                                 showSpeechOutputAzure={showSpeechOutputAzure}
                                                 showSpeechOutputBrowser={showSpeechOutputBrowser}
+                                                showFeedback={!isHistoryChat}
+                                                showDeveloperFeatures={showDeveloperFeatures}
                                             />
                                         </div>
                                     </div>
@@ -524,7 +533,12 @@ const Chat = () => {
                         onChatSelected={answers => {
                             if (answers.length === 0) return;
                             setAnswers(answers);
-                            lastQuestionRef.current = answers[answers.length - 1][0];
+                            setIsHistoryChat(true); // Mark as history chat to hide feedback
+                            // Fix: Defensive assignment for lastQuestionRef.current in all usages
+                            lastQuestionRef.current =
+                                Array.isArray(answers[answers.length - 1]) && typeof answers[answers.length - 1][0] === "string"
+                                    ? answers[answers.length - 1][0]
+                                    : "";
                         }}
                     />
                 )}

@@ -47,6 +47,15 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ src }) => {
         fetchMarkdown();
     }, [src]);
 
+    // Custom link renderer to force target="_blank" on all links
+    const CustomLink = (props: any) => {
+        return (
+            <a href={props.href} target="_blank" rel="noopener noreferrer">
+                {props.children}
+            </a>
+        );
+    };
+
     return (
         <div>
             {isLoading ? (
@@ -73,7 +82,12 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ src }) => {
                         href={src}
                         download
                     />
-                    <ReactMarkdown children={content} remarkPlugins={[remarkGfm]} className={`${styles.markdown} ${styles.markdownViewer}`} />
+                    <ReactMarkdown
+                        children={content}
+                        remarkPlugins={[remarkGfm]}
+                        className={`${styles.markdown} ${styles.markdownViewer}`}
+                        components={{ a: CustomLink }}
+                    />
                 </div>
             )}
         </div>

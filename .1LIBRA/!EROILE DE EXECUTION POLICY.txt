@@ -1,0 +1,15 @@
+--EROILE DE EXECUTION POLICY
+--asta pare ca rezolva toata sesiunea
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+
+--asta imi cere la fiecare componenta sa dau run
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
+
+This command should apply the policy immediately without asking for confirmation, allowing azd up to run without interruptions.
+--Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process -Force
+
+
+
+Get-Date -Format "HH:mm:ss"
+azd deploy
+Get-Date -Format "HH:mm:ss"
