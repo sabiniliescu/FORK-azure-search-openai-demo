@@ -433,7 +433,8 @@ async def feedback(auth_claims: dict[str, Any]):
         session_id=session_id,
         feedback=feedback_type,
         feedback_text=feedback_text,
-        user_id=user_id
+        user_id=user_id,
+        answer_index=answer_index  # Adăugăm index-ul în logging
     )
     
     print(f"[FEEDBACK] index={answer_index}, type={feedback_type}, text={feedback_text}", file=sys.stdout)

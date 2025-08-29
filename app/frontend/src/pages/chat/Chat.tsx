@@ -156,7 +156,7 @@ const Chat = () => {
                     const latestResponse: ChatAppResponse = {
                         ...askResponse,
                         message: { content: answer, role: askResponse.message.role },
-                        tracking: askResponse.tracking  // Includem tracking info și în update-uri
+                        tracking: askResponse.tracking // Includem tracking info și în update-uri
                     };
                     setStreamedAnswers([...answers, [question, latestResponse]]);
                     resolve(null);
@@ -168,13 +168,13 @@ const Chat = () => {
             for await (const event of readNDJSONStream(responseBody)) {
                 console.log("🔄 Stream event:", event);
                 console.log("🔄 Event keys:", Object.keys(event));
-                
+
                 // Verificăm tracking în primul rând, indiferent de alte proprietăți
                 if (event["tracking"]) {
                     askResponse.tracking = event["tracking"];
                     console.log("✅ Tracking captured:", event["tracking"]);
                 }
-                
+
                 if (event["context"] && event["context"]["data_points"]) {
                     event["message"] = event["delta"];
                     // IMPORTANT: Păstrăm tracking info înainte de suprascrierea askResponse
@@ -201,7 +201,7 @@ const Chat = () => {
         const fullResponse: ChatAppResponse = {
             ...askResponse,
             message: { content: answer, role: askResponse.message.role },
-            tracking: askResponse.tracking  // Păstrăm tracking info
+            tracking: askResponse.tracking // Păstrăm tracking info
         };
         console.log("🎯 Full response with tracking:", fullResponse.tracking);
         return fullResponse;

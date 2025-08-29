@@ -141,7 +141,8 @@ class ChatLogger:
         session_id: Optional[str],
         feedback: str,
         feedback_text: Optional[str] = None,
-        user_id: Optional[str] = None
+        user_id: Optional[str] = None,
+        answer_index: Optional[int] = None
     ) -> None:
         """Loghează feedback-ul utilizatorului"""
         if not self.enable_logging:
@@ -154,6 +155,7 @@ class ChatLogger:
         print(f"[FEEDBACK LOG] User ID: {user_id}")
         print(f"[FEEDBACK LOG] Conversation ID: {conversation_id}")
         print(f"[FEEDBACK LOG] Session ID: {session_id}")
+        print(f"[FEEDBACK LOG] Answer Index: {answer_index}")
         print(f"[FEEDBACK LOG] Feedback: {feedback}")
         if feedback_text:
             print(f"[FEEDBACK LOG] Feedback Text: {feedback_text}")
