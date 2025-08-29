@@ -77,6 +77,11 @@ export type ChatAppResponse = {
     session_state: any;
     feedbackType?: string;
     feedbackText?: string;
+    tracking?: {
+        request_id?: string;
+        session_id?: string;
+        conversation_id?: string;
+    };
 };
 
 export type ChatAppRequestContext = {

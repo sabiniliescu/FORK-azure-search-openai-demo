@@ -292,6 +292,14 @@ async def chat(auth_claims: dict[str, Any]):
             tokens_used=tokens_used
         )
         
+        # Adăugăm informații de tracking pentru feedback
+        if isinstance(result, dict):
+            result["tracking"] = {
+                "request_id": request_id,
+                "session_id": session_state,
+                "conversation_id": session_state  # folosim același session_state pentru ambele
+            }
+        
         return jsonify(result)
     except Exception as error:
         return error_response(error, "/chat")
@@ -308,6 +316,8 @@ async def chat_stream(auth_claims: dict[str, Any]):
     
     # Generăm un ID unic pentru această cerere
     request_id = str(uuid.uuid4())
+    
+    print(f"[BACKEND DEBUG] Generated request_id: {request_id}", file=sys.stdout)
     
     try:
         use_gpt4v = context.get("overrides", {}).get("use_gpt4v", False)
@@ -355,9 +365,24 @@ async def chat_stream(auth_claims: dict[str, Any]):
             full_answer = ""
             tokens_used = None
             extra_info_received = None
+            first_item = True
             
             async for item in result:
                 if isinstance(item, dict):
+                    # Adăugăm tracking info la primul item
+                    if first_item:
+                        item["tracking"] = {
+                            "request_id": request_id,
+                            "session_id": session_state,
+                            "conversation_id": session_state
+                        }
+                        print(f"[BACKEND STREAM DEBUG] Added tracking to first item: {item.get('tracking')}", file=sys.stdout)
+                        print(f"[BACKEND STREAM DEBUG] First item keys: {list(item.keys())}", file=sys.stdout)
+                        first_item = False
+                    
+                    if "tracking" in item:
+                        print(f"[BACKEND STREAM DEBUG] Item with tracking: {item.get('tracking')}", file=sys.stdout)
+                    
                     # Salvăm extra_info pentru later
                     if "context" in item and hasattr(item["context"], "data_points"):
                         extra_info_received = item["context"]
@@ -399,8 +424,9 @@ async def feedback(auth_claims: dict[str, Any]):
     
     # Logging cu noul nostru sistem
     user_id = auth_claims.get("oid")
-    conversation_id = data.get("conversationId", "unknown")  # Ar trebui trimis din frontend
-    session_id = data.get("sessionId", "unknown")  # Ar trebui trimis din frontend
+    conversation_id = data.get("conversationId", "unknown")  # Primit din frontend
+    session_id = data.get("sessionId", "unknown")  # Primit din frontend
+    request_id = data.get("requestId", "unknown")  # Primit din frontend
     
     chat_logger.log_feedback(
         conversation_id=conversation_id,
