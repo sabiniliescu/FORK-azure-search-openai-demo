@@ -6,6 +6,7 @@ import mimetypes
 import os
 import time
 import sys
+import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any, Union, cast
@@ -99,6 +100,7 @@ from core.authentication import AuthenticationHelper
 from core.sessionhelper import create_session_id
 from decorators import authenticated, authenticated_path
 from error import error_dict, error_response
+from chat_logging.chat_logger import chat_logger
 from prepdocs import (
     clean_key_if_exists,
     setup_embeddings_service,
@@ -228,6 +230,10 @@ async def chat(auth_claims: dict[str, Any]):
     request_json = await request.get_json()
     context = request_json.get("context", {})
     context["auth_claims"] = auth_claims
+    
+    # Generăm un ID unic pentru această cerere
+    request_id = str(uuid.uuid4())
+    
     try:
         use_gpt4v = context.get("overrides", {}).get("use_gpt4v", False)
         approach: Approach
@@ -244,11 +250,48 @@ async def chat(auth_claims: dict[str, Any]):
                 current_app.config[CONFIG_CHAT_HISTORY_COSMOS_ENABLED],
                 current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED],
             )
+        
+        # Extragem informațiile pentru logging
+        messages = request_json.get("messages", [])
+        user_question = messages[-1].get("content", "") if messages else ""
+        user_id = auth_claims.get("oid")  # Object ID din Azure AD
+        overrides = context.get("overrides", {})
+        
+        # Începem logging-ul
+        chat_logger.start_chat_log(
+            request_id=request_id,
+            question=user_question,
+            user_id=user_id,
+            conversation_id=session_state,
+            prompt=json.dumps(messages),  # Prompt-ul complet ca JSON
+            model_used=overrides.get("chatgpt_model", "unknown"),
+            temperature=overrides.get("temperature"),
+            session_id=session_state
+        )
+        
         result = await approach.run(
             request_json["messages"],
             context=context,
             session_state=session_state,
         )
+        
+        # Finalizăm logging-ul
+        answer = result.get("message", {}).get("content", "") if isinstance(result, dict) else ""
+        tokens_used = None
+        
+        # Încercăm să extragem token usage din result
+        if isinstance(result, dict):
+            context_data = result.get("context")
+            if context_data and hasattr(context_data, "data_points"):
+                if hasattr(context_data.data_points, "token_count"):
+                    tokens_used = context_data.data_points.token_count
+        
+        chat_logger.finish_chat_log(
+            request_id=request_id,
+            answer=answer,
+            tokens_used=tokens_used
+        )
+        
         return jsonify(result)
     except Exception as error:
         return error_response(error, "/chat")
@@ -262,6 +305,10 @@ async def chat_stream(auth_claims: dict[str, Any]):
     request_json = await request.get_json()
     context = request_json.get("context", {})
     context["auth_claims"] = auth_claims
+    
+    # Generăm un ID unic pentru această cerere
+    request_id = str(uuid.uuid4())
+    
     try:
         use_gpt4v = context.get("overrides", {}).get("use_gpt4v", False)
         approach: Approach
@@ -278,12 +325,64 @@ async def chat_stream(auth_claims: dict[str, Any]):
                 current_app.config[CONFIG_CHAT_HISTORY_COSMOS_ENABLED],
                 current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED],
             )
+        
+        # Extragem informațiile pentru logging
+        messages = request_json.get("messages", [])
+        user_question = messages[-1].get("content", "") if messages else ""
+        user_id = auth_claims.get("oid")  # Object ID din Azure AD
+        overrides = context.get("overrides", {})
+        
+        # Începem logging-ul
+        chat_logger.start_chat_log(
+            request_id=request_id,
+            question=user_question,
+            user_id=user_id,
+            conversation_id=session_state,
+            prompt=json.dumps(messages),  # Prompt-ul complet ca JSON
+            model_used=overrides.get("chatgpt_model", "unknown"),
+            temperature=overrides.get("temperature"),
+            session_id=session_state
+        )
+        
         result = await approach.run_stream(
             request_json["messages"],
             context=context,
             session_state=session_state,
         )
-        response = await make_response(format_as_ndjson(result))
+        
+        # Pentru stream, colectăm răspunsul pentru logging
+        async def logged_result_generator():
+            full_answer = ""
+            tokens_used = None
+            extra_info_received = None
+            
+            async for item in result:
+                if isinstance(item, dict):
+                    # Salvăm extra_info pentru later
+                    if "context" in item and hasattr(item["context"], "data_points"):
+                        extra_info_received = item["context"]
+                    
+                    # Acumulăm răspunsul pentru logging
+                    if "delta" in item and isinstance(item["delta"], dict) and "content" in item["delta"]:
+                        content = item["delta"]["content"]
+                        if content:
+                            full_answer += content
+                
+                yield item
+            
+            # Extragem token usage din extra_info dacă este disponibil
+            if extra_info_received and hasattr(extra_info_received, "data_points"):
+                if hasattr(extra_info_received.data_points, "token_count"):
+                    tokens_used = extra_info_received.data_points.token_count
+            
+            # La sfârșitul stream-ului, finalizăm logging-ul
+            chat_logger.finish_chat_log(
+                request_id=request_id,
+                answer=full_answer,
+                tokens_used=tokens_used
+            )
+        
+        response = await make_response(format_as_ndjson(logged_result_generator()))
         response.timeout = None  # type: ignore
         response.mimetype = "application/json-lines"
         return response
@@ -291,11 +390,26 @@ async def chat_stream(auth_claims: dict[str, Any]):
         return error_response(error, "/chat")
 
 @bp.route("/api/feedback", methods=["POST"])
-async def feedback():
+@authenticated
+async def feedback(auth_claims: dict[str, Any]):
     data = await request.get_json()
     answer_index = data.get("answerIndex")
     feedback_type = data.get("feedbackType")
     feedback_text = data.get("feedbackText")
+    
+    # Logging cu noul nostru sistem
+    user_id = auth_claims.get("oid")
+    conversation_id = data.get("conversationId", "unknown")  # Ar trebui trimis din frontend
+    session_id = data.get("sessionId", "unknown")  # Ar trebui trimis din frontend
+    
+    chat_logger.log_feedback(
+        conversation_id=conversation_id,
+        session_id=session_id,
+        feedback=feedback_type,
+        feedback_text=feedback_text,
+        user_id=user_id
+    )
+    
     print(f"[FEEDBACK] index={answer_index}, type={feedback_type}, text={feedback_text}", file=sys.stdout)
     return jsonify({"status": "ok"})
 
