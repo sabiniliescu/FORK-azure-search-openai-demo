@@ -78,16 +78,6 @@ export const Answer = ({
         // Folosim tracking info din answer.tracking în primul rând
         const trackingInfo = answer.tracking || {};
 
-        console.log("🚀 Sending feedback with tracking info:", {
-            answerIndex: index,
-            feedbackType: type,
-            feedbackText: text || null,
-            requestId: trackingInfo.request_id || requestId || "unknown",
-            sessionId: trackingInfo.session_id || sessionId || "unknown",
-            conversationId: trackingInfo.conversation_id || conversationId || "unknown",
-            fullAnswer: answer
-        });
-
         fetch("/api/feedback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -303,29 +293,6 @@ export const Answer = ({
                         )}
                         {showSpeechOutputBrowser && <SpeechOutputBrowser answer={sanitizedAnswerHtml} />}
                     </div>
-
-                    {/* Debug: Afișare tracking info */}
-                    {showDeveloperFeatures && answer.tracking && (
-                        <div
-                            style={{
-                                marginTop: 12,
-                                padding: 8,
-                                backgroundColor: "#f0f0f0",
-                                border: "1px solid #ccc",
-                                borderRadius: 4,
-                                fontSize: "12px",
-                                fontFamily: "monospace"
-                            }}
-                        >
-                            <strong>🔍 Tracking Debug:</strong>
-                            <br />
-                            Request ID: {answer.tracking.request_id}
-                            <br />
-                            Session ID: {answer.tracking.session_id}
-                            <br />
-                            Conversation ID: {answer.tracking.conversation_id}
-                        </div>
-                    )}
                 </div>
             </Stack.Item>
         </Stack>

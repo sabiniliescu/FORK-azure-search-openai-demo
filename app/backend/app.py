@@ -428,6 +428,12 @@ async def feedback(auth_claims: dict[str, Any]):
     session_id = data.get("sessionId", "unknown")  # Primit din frontend
     request_id = data.get("requestId", "unknown")  # Primit din frontend
     
+    # Debug logging pentru a vedea ce primim din frontend
+    print(f"[FEEDBACK DEBUG] Raw data received: {data}")
+    print(f"[FEEDBACK DEBUG] Extracted conversationId: {conversation_id}")
+    print(f"[FEEDBACK DEBUG] Extracted sessionId: {session_id}")
+    print(f"[FEEDBACK DEBUG] Extracted requestId: {request_id}")
+    
     chat_logger.log_feedback(
         conversation_id=conversation_id,
         session_id=session_id,
