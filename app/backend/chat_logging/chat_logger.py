@@ -166,7 +166,8 @@ class ChatLogger:
         feedback: str,
         feedback_text: Optional[str] = None,
         user_id: Optional[str] = None,
-        answer_index: Optional[int] = None
+        answer_index: Optional[int] = None,
+        request_id: Optional[str] = None
     ) -> None:
         """Loghează feedback-ul utilizatorului"""
         if not self.enable_logging:
@@ -179,6 +180,7 @@ class ChatLogger:
         print(f"[FEEDBACK LOG] User ID: {user_id}")
         print(f"[FEEDBACK LOG] Conversation ID: {conversation_id}")
         print(f"[FEEDBACK LOG] Session ID: {session_id}")
+        print(f"[FEEDBACK LOG] Request ID: {request_id}")
         print(f"[FEEDBACK LOG] Answer Index: {answer_index}")
         print(f"[FEEDBACK LOG] Feedback: {feedback}")
         if feedback_text:
@@ -192,7 +194,8 @@ class ChatLogger:
             feedback=feedback,
             feedback_text=feedback_text,
             user_id=user_id,
-            timestamp=timestamp
+            timestamp=timestamp,
+            request_id=request_id
         ))
     
     def _save_complete_log(self, log_entry: ChatLogEntry) -> None:
@@ -327,7 +330,8 @@ class ChatLogger:
         feedback: str,
         feedback_text: Optional[str],
         user_id: Optional[str],
-        timestamp: datetime
+        timestamp: datetime,
+        request_id: Optional[str] = None
     ) -> None:
         """Salvează feedback-ul în baza de date (asincron)"""
         try:
@@ -337,7 +341,8 @@ class ChatLogger:
                 feedback=feedback,
                 feedback_text=feedback_text,
                 user_id=user_id,
-                timestamp=timestamp
+                timestamp=timestamp,
+                request_id=request_id
             )
         except Exception as e:
             # Aplicația continuă să ruleze chiar dacă baza de date nu este disponibilă

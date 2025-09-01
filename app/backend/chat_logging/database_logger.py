@@ -314,7 +314,8 @@ class AzureSQLLogger:
         feedback: str,
         feedback_text: Optional[str] = None,
         user_id: Optional[str] = None,
-        timestamp: Optional[datetime] = None
+        timestamp: Optional[datetime] = None,
+        request_id: Optional[str] = None
     ) -> bool:
         """
         Loghează feedback-ul utilizatorului
@@ -323,7 +324,22 @@ class AzureSQLLogger:
         if timestamp is None:
             timestamp = datetime.now()
         
-        # Încearcă să actualizeze ultima înregistrare pentru această conversație
+        # Dacă avem request_id, actualizează înregistrarea specifică
+        if request_id:
+            update_sql = """
+            UPDATE chat_logs 
+            SET feedback = ?, 
+                feedback_text = ?
+            WHERE request_id = ?
+            """
+            params = (feedback, feedback_text, request_id)
+            
+            success = await self._execute_with_retry(update_sql, params)
+            if success:
+                self._log_safely(f"[DATABASE] Feedback logged pentru request_id: {request_id}")
+                return success
+        
+        # Fallback: încearcă să actualizeze ultima înregistrare pentru această conversație
         update_sql = """
         UPDATE chat_logs 
         SET feedback = ?, 
@@ -336,7 +352,7 @@ class AzureSQLLogger:
         
         success = await self._execute_with_retry(update_sql, params)
         if success:
-            self._log_safely(f"[DATABASE] Feedback logged pentru conversation_id: {conversation_id}")
+            self._log_safely(f"[DATABASE] Feedback logged pentru conversation_id: {conversation_id} (fallback)")
         else:
             # Dacă actualizarea nu a reușit, creează o înregistrare nouă doar pentru feedback
             insert_sql = """
