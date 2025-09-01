@@ -1,8 +1,11 @@
 import json
 import time
+import threading
 from datetime import datetime
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, asdict
+import asyncio
+from .database_logger import azure_sql_logger
 
 
 @dataclass
@@ -92,6 +95,19 @@ class ChatLogger:
             print(f"[CHAT LOG] Prompt Preview: {str(prompt)[:200]}...")
         
         print(f"{'='*80}")
+        
+        # Încearcă să salveze în baza de date (asincron, fără a bloca aplicația)
+        self._schedule_task(self._save_chat_start_to_db(
+            conversation_id=conversation_id,
+            request_id=request_id,
+            question=question,
+            user_id=user_id,
+            prompt_text=prompt,
+            model_used=model_used,
+            temperature=temperature,
+            session_id=session_id,
+            timestamp_start=log_entry.timestamp_start
+        ))
     
     def finish_chat_log(
         self,
@@ -132,6 +148,14 @@ class ChatLogger:
         # Salvează log-ul complet (pentru acum doar în terminal)
         self._save_complete_log(log_entry)
         
+        # Încearcă să salveze în baza de date (asincron, fără a bloca aplicația)
+        self._schedule_task(self._save_chat_end_to_db(
+            request_id=request_id,
+            answer=answer,
+            tokens_used=tokens_used,
+            timestamp_end=log_entry.timestamp_end
+        ))
+        
         # Curăță din active logs
         del self.active_logs[request_id]
     
@@ -160,6 +184,16 @@ class ChatLogger:
         if feedback_text:
             print(f"[FEEDBACK LOG] Feedback Text: {feedback_text}")
         print(f"{'='*80}")
+        
+        # Încearcă să salveze în baza de date (asincron, fără a bloca aplicația)
+        self._schedule_task(self._save_feedback_to_db(
+            conversation_id=conversation_id,
+            session_id=session_id,
+            feedback=feedback,
+            feedback_text=feedback_text,
+            user_id=user_id,
+            timestamp=timestamp
+        ))
     
     def _save_complete_log(self, log_entry: ChatLogEntry) -> None:
         """Salvează log-ul complet (pentru acum în terminal)"""
@@ -211,6 +245,103 @@ class ChatLogger:
             print(f"Prompt: {log_entry.prompt}")
         
         print(f"{'='*100}\n")
+    
+    def _schedule_task(self, coro):
+        """Programează o task asincronă, creând un event loop dacă este necesar"""
+        try:
+            # Încearcă să obții event loop-ul curent
+            loop = asyncio.get_running_loop()
+            # Dacă avem un loop activ, creează task-ul
+            asyncio.create_task(coro)
+        except RuntimeError:
+            # Nu există un event loop activ, creează unul nou în background
+            try:
+                def run_in_thread():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        loop.run_until_complete(coro)
+                    except Exception as e:
+                        print(f"[DATABASE ERROR] Task background eșuat: {e}")
+                    finally:
+                        loop.close()
+                
+                thread = threading.Thread(target=run_in_thread, daemon=True)
+                thread.start()
+                
+            except Exception as e:
+                print(f"[DATABASE ERROR] Nu s-a putut programa task-ul: {e}")
+    
+    async def _save_chat_start_to_db(
+        self,
+        conversation_id: str,
+        request_id: str,
+        question: str,
+        user_id: Optional[str],
+        prompt_text: str,
+        model_used: Optional[str],
+        temperature: Optional[float],
+        session_id: Optional[str],
+        timestamp_start: datetime
+    ) -> None:
+        """Salvează începutul chat-ului în baza de date (asincron)"""
+        try:
+            await azure_sql_logger.log_chat_start(
+                conversation_id=conversation_id,
+                request_id=request_id,
+                question=question,
+                user_id=user_id,
+                prompt_text=prompt_text,
+                model_used=model_used,
+                temperature=temperature,
+                session_id=session_id,
+                timestamp_start=timestamp_start
+            )
+        except Exception as e:
+            # Aplicația continuă să ruleze chiar dacă baza de date nu este disponibilă
+            print(f"[DATABASE ERROR] Nu s-a putut salva chat start în DB: {e}")
+    
+    async def _save_chat_end_to_db(
+        self,
+        request_id: str,
+        answer: str,
+        tokens_used: Optional[int],
+        timestamp_end: datetime
+    ) -> None:
+        """Salvează sfârșitul chat-ului în baza de date (asincron)"""
+        try:
+            await azure_sql_logger.log_chat_end(
+                request_id=request_id,
+                answer=answer,
+                tokens_used=tokens_used,
+                timestamp_end=timestamp_end
+            )
+        except Exception as e:
+            # Aplicația continuă să ruleze chiar dacă baza de date nu este disponibilă
+            print(f"[DATABASE ERROR] Nu s-a putut salva chat end în DB: {e}")
+    
+    async def _save_feedback_to_db(
+        self,
+        conversation_id: str,
+        session_id: Optional[str],
+        feedback: str,
+        feedback_text: Optional[str],
+        user_id: Optional[str],
+        timestamp: datetime
+    ) -> None:
+        """Salvează feedback-ul în baza de date (asincron)"""
+        try:
+            await azure_sql_logger.log_feedback(
+                conversation_id=conversation_id,
+                session_id=session_id,
+                feedback=feedback,
+                feedback_text=feedback_text,
+                user_id=user_id,
+                timestamp=timestamp
+            )
+        except Exception as e:
+            # Aplicația continuă să ruleze chiar dacă baza de date nu este disponibilă
+            print(f"[DATABASE ERROR] Nu s-a putut salva feedback în DB: {e}")
 
 
 # Instanță globală pentru logger
