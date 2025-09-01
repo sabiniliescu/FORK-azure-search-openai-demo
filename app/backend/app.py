@@ -643,8 +643,8 @@ async def setup_clients():
     USE_CHAT_HISTORY_BROWSER = os.getenv("USE_CHAT_HISTORY_BROWSER", "").lower() == "true"
     USE_CHAT_HISTORY_COSMOS = os.getenv("USE_CHAT_HISTORY_COSMOS", "").lower() == "true"
     USE_AGENTIC_RETRIEVAL = os.getenv("USE_AGENTIC_RETRIEVAL", "").lower() == "true"
-    ENABLE_DEBUG_LOGGING = os.getenv("ENABLE_DEBUG_LOGGING", "true").lower() == "true"
-    ENABLE_DEVELOPER_FEATURES = os.getenv("ENABLE_DEVELOPER_FEATURES", "true").lower() == "true"
+    ENABLE_DEBUG_LOGGING = os.getenv("ENABLE_DEBUG_LOGGING", "false").lower() == "true"
+    ENABLE_DEVELOPER_FEATURES = os.getenv("ENABLE_DEVELOPER_FEATURES", "false").lower() == "true"
 
     # WEBSITE_HOSTNAME is always set by App Service, RUNNING_IN_PRODUCTION is set in main.bicep
     RUNNING_ON_AZURE = os.getenv("WEBSITE_HOSTNAME") is not None or os.getenv("RUNNING_IN_PRODUCTION") is not None
