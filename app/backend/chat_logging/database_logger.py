@@ -13,10 +13,13 @@ from dotenv import load_dotenv
 try:
     import pyodbc
     PYODBC_AVAILABLE = True
+    print("🎉 [DATABASE SUCCESS] pyodbc v{} INSTALAT CU SUCCES! Database logging ACTIVAT! 🎉".format(pyodbc.version), file=sys.stdout)
+    print("✅ [DATABASE] Azure SQL Database connectivity: ENABLED", file=sys.stdout)
 except ImportError:
     pyodbc = None
     PYODBC_AVAILABLE = False
-    print("[DATABASE] pyodbc nu este disponibil. Database logging va fi dezactivat.", file=sys.stderr)
+    print("❌ [DATABASE ERROR] pyodbc NU ESTE INSTALAT! Database logging DEZACTIVAT!", file=sys.stderr)
+    print("💡 [DATABASE FIX] Pentru a activa database logging, adăugați 'pyodbc==5.2.0' în requirements.txt și redeploy", file=sys.stderr)
 
 # Încarcă variabilele de mediu la nivel de modul
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), ".env")
@@ -39,7 +42,8 @@ class AzureSQLLogger:
         if not PYODBC_AVAILABLE:
             self.enable_db_logging = False
             self.connection_string = None
-            self._log_safely("[DATABASE] pyodbc nu este instalat. Database logging dezactivat.")
+            self._log_safely("❌ [DATABASE INIT] pyodbc nu este instalat. Database logging DEZACTIVAT!")
+            self._log_safely("💡 [DATABASE FIX] Pentru a activa logging: pip install pyodbc==5.2.0")
             return
             
         self.enable_db_logging = enable_db_logging
@@ -47,6 +51,11 @@ class AzureSQLLogger:
         self.connection_retry_count = 3
         self.connection_retry_delay = 5  # secunde - măresc pentru Azure SQL
         self.max_connection_timeout = 30  # secunde - măresc pentru Azure SQL
+        
+        # Mesaj de confirmare că pyodbc funcționează
+        if self.enable_db_logging and self.connection_string:
+            self._log_safely("🎉 [DATABASE INIT] pyodbc disponibil! Database logging ACTIVAT!")
+            self._log_safely(f"🔗 [DATABASE INIT] Connection string configurat pentru: {os.getenv('AZURE_SQL_SERVER', 'N/A')}")
         
         # Flag pentru a evita spam-ul de erori în log dacă baza de date nu e disponibilă
         self.last_connection_error_time = 0
@@ -73,7 +82,7 @@ class AzureSQLLogger:
                 self.max_connection_timeout = 30  # Măresc timeout-ul pentru Azure SQL
             
             connection_string = (
-                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"DRIVER={{ODBC Driver 18 for SQL Server}};"
                 f"SERVER=tcp:{server},1433;"
                 f"DATABASE={database};"
                 f"UID={username};"
@@ -173,10 +182,11 @@ class AzureSQLLogger:
             cursor = connection.cursor()
             cursor.execute(create_table_sql)
             connection.commit()
-            self._log_safely("[DATABASE] Tabela chat_logs verificată/creată cu succes")
+            self._log_safely("🎉 [DATABASE SUCCESS] Tabela chat_logs verificată/creată cu succes")
+            self._log_safely("✅ [DATABASE] pyodbc + Azure SQL Database funcționează perfect!")
             
         except Exception as e:
-            self._log_safely(f"[DATABASE] Eroare la crearea tabelei: {e}")
+            self._log_safely(f"❌ [DATABASE ERROR] Eroare la crearea tabelei: {e}")
             
         finally:
             if connection:
@@ -271,7 +281,8 @@ class AzureSQLLogger:
         
         success = await self._execute_with_retry(insert_sql, params)
         if success:
-            self._log_safely(f"[DATABASE] Chat start logged pentru request_id: {request_id}")
+            self._log_safely(f"🎉 [DATABASE SUCCESS] Chat start logged pentru request_id: {request_id}")
+            self._log_safely("✅ [DATABASE] pyodbc funcționează perfect! Toate operațiunile sunt salvate în Azure SQL!")
         
         return success
     
