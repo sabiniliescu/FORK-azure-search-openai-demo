@@ -92,7 +92,6 @@ async def test_database_connectivity():
             prompt_text='[{"role": "user", "content": "Test question pentru baza de date?"}]',
             model_used="gpt-4-test",
             temperature=0.7,
-            session_id="test-session-456",
             timestamp_start=datetime.now()
         )
         
@@ -135,7 +134,6 @@ async def test_database_connectivity():
     try:
         success = await azure_sql_logger.log_feedback(
             conversation_id=test_conversation_id,
-            session_id="test-session-456",
             feedback="positive",
             feedback_text="Test feedback pentru verificarea funcționalității!",
             user_id="test-user-123",
@@ -200,8 +198,7 @@ def test_chat_logger_with_database():
         conversation_id=conversation_id,
         prompt='[{"role": "user", "content": "Cum funcționează logging-ul integrat?"}]',
         model_used="gpt-4-integrated",
-        temperature=0.8,
-        session_id="integrated-session-999"
+        temperature=0.8
     )
     
     print("✓ Chat log început cu succes")

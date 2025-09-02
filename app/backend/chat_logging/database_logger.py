@@ -157,7 +157,6 @@ class AzureSQLLogger:
             tokens_used INT NULL,
             model_used NVARCHAR(255) NULL,
             temperature FLOAT NULL,
-            session_id NVARCHAR(255) NULL,
             prompt_text NVARCHAR(MAX) NULL,
             duration_seconds FLOAT NULL,
             created_at DATETIME2 DEFAULT GETDATE()
@@ -250,7 +249,6 @@ class AzureSQLLogger:
         prompt_text: str,
         model_used: Optional[str] = None,
         temperature: Optional[float] = None,
-        session_id: Optional[str] = None,
         timestamp_start: Optional[datetime] = None
     ) -> bool:
         """
@@ -263,8 +261,8 @@ class AzureSQLLogger:
         insert_sql = """
         INSERT INTO chat_logs (
             conversation_id, request_id, question, user_id, prompt_text,
-            model_used, temperature, session_id, timestamp_start
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            model_used, temperature, timestamp_start
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         params = (
@@ -275,7 +273,6 @@ class AzureSQLLogger:
             prompt_text,
             model_used,
             temperature,
-            session_id,
             timestamp_start
         )
         
@@ -321,7 +318,6 @@ class AzureSQLLogger:
     async def log_feedback(
         self,
         conversation_id: str,
-        session_id: Optional[str],
         feedback: str,
         feedback_text: Optional[str] = None,
         user_id: Optional[str] = None,
@@ -368,11 +364,11 @@ class AzureSQLLogger:
             # Dacă actualizarea nu a reușit, creează o înregistrare nouă doar pentru feedback
             insert_sql = """
             INSERT INTO chat_logs (
-                conversation_id, session_id, feedback, feedback_text, user_id, timestamp_start
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                conversation_id, feedback, feedback_text, user_id, timestamp_start
+            ) VALUES (?, ?, ?, ?, ?)
             """
             
-            feedback_params = (conversation_id, session_id, feedback, feedback_text, user_id, timestamp)
+            feedback_params = (conversation_id, feedback, feedback_text, user_id, timestamp)
             success = await self._execute_with_retry(insert_sql, feedback_params)
             if success:
                 self._log_safely(f"[DATABASE] Feedback înregistrare nouă creată pentru conversation_id: {conversation_id}")
@@ -394,7 +390,7 @@ class AzureSQLLogger:
         SELECT TOP (?) 
             id, conversation_id, request_id, question, answer, 
             timestamp_start, timestamp_end, feedback, feedback_text,
-            user_id, tokens_used, model_used, temperature, session_id,
+            user_id, tokens_used, model_used, temperature,
             duration_seconds, created_at
         FROM chat_logs 
         WHERE conversation_id = ?

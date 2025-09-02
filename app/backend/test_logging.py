@@ -24,7 +24,6 @@ def test_chat_logging():
     prompt = '[{"role": "user", "content": "Ce este inteligența artificială?"}]'
     model_used = "gpt-4"
     temperature = 0.7
-    session_id = "session-101"
     
     chat_logger.start_chat_log(
         request_id=request_id,
@@ -33,8 +32,7 @@ def test_chat_logging():
         conversation_id=conversation_id,
         prompt=prompt,
         model_used=model_used,
-        temperature=temperature,
-        session_id=session_id
+        temperature=temperature
     )
     
     print("✓ Start chat log completed\n")
@@ -60,7 +58,6 @@ def test_chat_logging():
     
     chat_logger.log_feedback(
         conversation_id=conversation_id,
-        session_id=session_id,
         feedback="positive",
         feedback_text="Răspuns foarte util și clar!",
         user_id=user_id,
@@ -74,7 +71,6 @@ def test_chat_logging():
     
     chat_logger.log_feedback(
         conversation_id=conversation_id,
-        session_id=session_id,
         feedback="negative", 
         feedback_text="Răspunsul ar putea fi mai detaliat.",
         user_id=user_id,

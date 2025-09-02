@@ -23,7 +23,6 @@ class ChatLogEntry:
     feedback_text: Optional[str] = None
     model_used: Optional[str] = None
     temperature: Optional[float] = None
-    session_id: Optional[str] = None
 
 
 class ChatLogger:
@@ -41,8 +40,7 @@ class ChatLogger:
         conversation_id: str,
         prompt: str,
         model_used: Optional[str] = None,
-        temperature: Optional[float] = None,
-        session_id: Optional[str] = None
+        temperature: Optional[float] = None
     ) -> None:
         """Începe logging-ul pentru o cerere de chat"""
         if not self.enable_logging:
@@ -58,8 +56,7 @@ class ChatLogger:
             timestamp_end=None,
             tokens_used=None,
             model_used=model_used,
-            temperature=temperature,
-            session_id=session_id
+            temperature=temperature
         )
         
         self.active_logs[request_id] = log_entry
@@ -70,7 +67,6 @@ class ChatLogger:
         print(f"[CHAT LOG] Timestamp Start: {log_entry.timestamp_start.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"[CHAT LOG] User ID: {user_id}")
         print(f"[CHAT LOG] Conversation ID: {conversation_id}")
-        print(f"[CHAT LOG] Session ID: {session_id}")
         print(f"[CHAT LOG] Model: {model_used}")
         print(f"[CHAT LOG] Temperature: {temperature}")
         print(f"[CHAT LOG] Question: {question}")
@@ -105,7 +101,6 @@ class ChatLogger:
             prompt_text=prompt,
             model_used=model_used,
             temperature=temperature,
-            session_id=session_id,
             timestamp_start=log_entry.timestamp_start
         ))
     
@@ -162,7 +157,6 @@ class ChatLogger:
     def log_feedback(
         self,
         conversation_id: str,
-        session_id: Optional[str],
         feedback: str,
         feedback_text: Optional[str] = None,
         user_id: Optional[str] = None,
@@ -179,7 +173,6 @@ class ChatLogger:
         print(f"[FEEDBACK LOG] Timestamp: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"[FEEDBACK LOG] User ID: {user_id}")
         print(f"[FEEDBACK LOG] Conversation ID: {conversation_id}")
-        print(f"[FEEDBACK LOG] Session ID: {session_id}")
         print(f"[FEEDBACK LOG] Request ID: {request_id}")
         print(f"[FEEDBACK LOG] Answer Index: {answer_index}")
         print(f"[FEEDBACK LOG] Feedback: {feedback}")
@@ -190,7 +183,6 @@ class ChatLogger:
         # Încearcă să salveze în baza de date (asincron, fără a bloca aplicația)
         self._schedule_task(self._save_feedback_to_db(
             conversation_id=conversation_id,
-            session_id=session_id,
             feedback=feedback,
             feedback_text=feedback_text,
             user_id=user_id,
@@ -213,7 +205,6 @@ class ChatLogger:
         
         print(f"User ID: {log_entry.user_id}")
         print(f"Conversation ID: {log_entry.conversation_id}")
-        print(f"Session ID: {log_entry.session_id}")
         print(f"Model: {log_entry.model_used}")
         print(f"Temperature: {log_entry.temperature}")
         print(f"Start Time: {log_entry.timestamp_start}")
@@ -284,7 +275,6 @@ class ChatLogger:
         prompt_text: str,
         model_used: Optional[str],
         temperature: Optional[float],
-        session_id: Optional[str],
         timestamp_start: datetime
     ) -> None:
         """Salvează începutul chat-ului în baza de date (asincron)"""
@@ -297,7 +287,6 @@ class ChatLogger:
                 prompt_text=prompt_text,
                 model_used=model_used,
                 temperature=temperature,
-                session_id=session_id,
                 timestamp_start=timestamp_start
             )
         except Exception as e:
@@ -326,7 +315,6 @@ class ChatLogger:
     async def _save_feedback_to_db(
         self,
         conversation_id: str,
-        session_id: Optional[str],
         feedback: str,
         feedback_text: Optional[str],
         user_id: Optional[str],
@@ -337,7 +325,6 @@ class ChatLogger:
         try:
             await azure_sql_logger.log_feedback(
                 conversation_id=conversation_id,
-                session_id=session_id,
                 feedback=feedback,
                 feedback_text=feedback_text,
                 user_id=user_id,

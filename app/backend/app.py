@@ -265,8 +265,7 @@ async def chat(auth_claims: dict[str, Any]):
             conversation_id=session_state,
             prompt=json.dumps(messages, ensure_ascii=False, indent=2),  # Prompt-ul complet ca JSON cu diacritice
             model_used=overrides.get("chatgpt_model", "unknown"),
-            temperature=overrides.get("temperature"),
-            session_id=session_state
+            temperature=overrides.get("temperature")
         )
         
         result = await approach.run(
@@ -350,8 +349,7 @@ async def chat_stream(auth_claims: dict[str, Any]):
             conversation_id=session_state,
             prompt=json.dumps(messages, ensure_ascii=False, indent=2),  # Prompt-ul complet ca JSON cu diacritice
             model_used=overrides.get("chatgpt_model", "unknown"),
-            temperature=overrides.get("temperature"),
-            session_id=session_state
+            temperature=overrides.get("temperature")
         )
         
         result = await approach.run_stream(
@@ -425,18 +423,15 @@ async def feedback(auth_claims: dict[str, Any]):
     # Logging cu noul nostru sistem
     user_id = auth_claims.get("oid")
     conversation_id = data.get("conversationId", "unknown")  # Primit din frontend
-    session_id = data.get("sessionId", "unknown")  # Primit din frontend
     request_id = data.get("requestId", "unknown")  # Primit din frontend
     
     # Debug logging pentru a vedea ce primim din frontend
     print(f"[FEEDBACK DEBUG] Raw data received: {data}")
     print(f"[FEEDBACK DEBUG] Extracted conversationId: {conversation_id}")
-    print(f"[FEEDBACK DEBUG] Extracted sessionId: {session_id}")
     print(f"[FEEDBACK DEBUG] Extracted requestId: {request_id}")
     
     chat_logger.log_feedback(
         conversation_id=conversation_id,
-        session_id=session_id,
         feedback=feedback_type,
         feedback_text=feedback_text,
         user_id=user_id,

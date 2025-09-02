@@ -138,8 +138,7 @@ async def test_database_connection():
             conversation_id=test_conversation_id,
             prompt='{"messages": [{"role": "user", "content": "test message"}]}',
             model_used="test_model",
-            temperature=0.7,
-            session_id=test_conversation_id
+            temperature=0.7
         )
         
         # Așteptăm puțin pentru operațiunile async
@@ -160,7 +159,6 @@ async def test_database_connection():
         print("   👍 Test log_feedback...")
         chat_logger.log_feedback(
             conversation_id=test_conversation_id,
-            session_id=test_conversation_id,
             feedback="positive",
             feedback_text="Great answer!",
             user_id="test_user",
