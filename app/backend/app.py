@@ -258,13 +258,16 @@ async def chat(auth_claims: dict[str, Any]):
         overrides = context.get("overrides", {})
         
         # Începem logging-ul
+        # Capturăm modelul real din approach (dacă este disponibil)
+        actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
+        
         chat_logger.start_chat_log(
             request_id=request_id,
             question=user_question,
             user_id=user_id,
             conversation_id=session_state,
             prompt=json.dumps(messages, ensure_ascii=False, indent=2),  # Prompt-ul complet ca JSON cu diacritice
-            model_used=overrides.get("chatgpt_model", "unknown"),
+            model_used=actual_model,
             temperature=overrides.get("temperature")
         )
         
@@ -316,8 +319,6 @@ async def chat_stream(auth_claims: dict[str, Any]):
     # Generăm un ID unic pentru această cerere
     request_id = str(uuid.uuid4())
     
-    print(f"[BACKEND DEBUG] Generated request_id: {request_id}", file=sys.stdout)
-    
     try:
         use_gpt4v = context.get("overrides", {}).get("use_gpt4v", False)
         approach: Approach
@@ -342,13 +343,16 @@ async def chat_stream(auth_claims: dict[str, Any]):
         overrides = context.get("overrides", {})
         
         # Începem logging-ul
+        # Capturăm modelul real din approach (dacă este disponibil)
+        actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
+        
         chat_logger.start_chat_log(
             request_id=request_id,
             question=user_question,
             user_id=user_id,
             conversation_id=session_state,
             prompt=json.dumps(messages, ensure_ascii=False, indent=2),  # Prompt-ul complet ca JSON cu diacritice
-            model_used=overrides.get("chatgpt_model", "unknown"),
+            model_used=actual_model,
             temperature=overrides.get("temperature")
         )
         
@@ -374,12 +378,7 @@ async def chat_stream(auth_claims: dict[str, Any]):
                             "session_id": session_state,
                             "conversation_id": session_state
                         }
-                        print(f"[BACKEND STREAM DEBUG] Added tracking to first item: {item.get('tracking')}", file=sys.stdout)
-                        print(f"[BACKEND STREAM DEBUG] First item keys: {list(item.keys())}", file=sys.stdout)
                         first_item = False
-                    
-                    if "tracking" in item:
-                        print(f"[BACKEND STREAM DEBUG] Item with tracking: {item.get('tracking')}", file=sys.stdout)
                     
                     # Salvăm extra_info pentru later
                     if "context" in item and hasattr(item["context"], "data_points"):
@@ -425,11 +424,6 @@ async def feedback(auth_claims: dict[str, Any]):
     conversation_id = data.get("conversationId", "unknown")  # Primit din frontend
     request_id = data.get("requestId", "unknown")  # Primit din frontend
     
-    # Debug logging pentru a vedea ce primim din frontend
-    print(f"[FEEDBACK DEBUG] Raw data received: {data}")
-    print(f"[FEEDBACK DEBUG] Extracted conversationId: {conversation_id}")
-    print(f"[FEEDBACK DEBUG] Extracted requestId: {request_id}")
-    
     chat_logger.log_feedback(
         conversation_id=conversation_id,
         feedback=feedback_type,
@@ -439,7 +433,6 @@ async def feedback(auth_claims: dict[str, Any]):
         request_id=request_id  # Adăugăm request_id pentru identificarea precisă
     )
     
-    print(f"[FEEDBACK] index={answer_index}, type={feedback_type}, text={feedback_text}", file=sys.stdout)
     return jsonify({"status": "ok"})
 
 # Send MSAL.js settings to the client UI

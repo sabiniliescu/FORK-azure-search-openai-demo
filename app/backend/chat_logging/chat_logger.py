@@ -61,36 +61,12 @@ class ChatLogger:
         
         self.active_logs[request_id] = log_entry
         
-        # Log în terminal
-        print(f"\n{'='*80}")
-        print(f"[CHAT LOG START] Request ID: {request_id}")
-        print(f"[CHAT LOG] Timestamp Start: {log_entry.timestamp_start.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"[CHAT LOG] User ID: {user_id}")
-        print(f"[CHAT LOG] Conversation ID: {conversation_id}")
-        print(f"[CHAT LOG] Model: {model_used}")
-        print(f"[CHAT LOG] Temperature: {temperature}")
-        print(f"[CHAT LOG] Question: {question}")
-        print(f"[CHAT LOG] Prompt Length: {len(prompt)} chars")
-        
-        # Afișăm preview-ul prompt-ului într-un format mai citibil
-        try:
-            prompt_obj = json.loads(prompt) if isinstance(prompt, str) else prompt
-            if isinstance(prompt_obj, list) and len(prompt_obj) > 0:
-                # Afișăm doar ultimul mesaj pentru preview
-                last_message = prompt_obj[-1].get("content", "")
-                # Luăm primele 300 de caractere pentru preview
-                preview_text = last_message[:300] + "..." if len(last_message) > 300 else last_message
-                # Înlocuim \\n cu newlines reale
-                formatted_preview = preview_text.replace('\\n', '\n')
-                print(f"[CHAT LOG] Last Message Preview:")
-                for line in formatted_preview.split('\n'):
-                    print(f"    {line}")
-            else:
-                print(f"[CHAT LOG] Prompt Preview: {prompt[:200]}...")
-        except (json.JSONDecodeError, AttributeError):
-            print(f"[CHAT LOG] Prompt Preview: {str(prompt)[:200]}...")
-        
-        print(f"{'='*80}")
+        # Log în terminal - doar informațiile care se salvează în DB
+        print(f"\n[DB LOG] 📝 Chat Start | ID: {request_id}")
+        print(f"  Conversation: {conversation_id}")
+        print(f"  User: {user_id or 'Anonymous'}")
+        print(f"  Model: {model_used or 'Unknown'}")
+        print(f"  Question: {question[:100]}{'...' if len(question) > 100 else ''}")
         
         # Încearcă să salveze în baza de date (asincron, fără a bloca aplicația)
         self._schedule_task(self._save_chat_start_to_db(
@@ -122,23 +98,10 @@ class ChatLogger:
         # Calculează durata
         duration = (log_entry.timestamp_end - log_entry.timestamp_start).total_seconds()
         
-        # Log în terminal
-        print(f"\n{'='*80}")
-        print(f"[CHAT LOG END] Request ID: {request_id}")
-        print(f"[CHAT LOG] Timestamp End: {log_entry.timestamp_end.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"[CHAT LOG] Duration: {duration:.2f} seconds")
-        print(f"[CHAT LOG] Tokens Used: {tokens_used}")
-        print(f"[CHAT LOG] Answer Length: {len(answer)} chars")
-        print(f"[CHAT LOG] Answer Preview:")
-        
-        # Afișăm răspunsul cu \n interpretate ca line breaks
-        answer_preview = answer[:800] + "..." if len(answer) > 800 else answer
-        # Gestionăm atât \n real cât și string literal \\n
-        formatted_answer = answer_preview.replace('\\n', '\n')
-        for line in formatted_answer.split('\n'):
-            print(f"    {line}")
-        
-        print(f"{'='*80}")
+        # Log în terminal - doar informațiile care se salvează în DB
+        print(f"[DB LOG] ✅ Chat End | ID: {request_id}")
+        print(f"  Duration: {duration:.2f}s | Tokens: {tokens_used or 'N/A'}")
+        print(f"  Answer: {answer[:100]}{'...' if len(answer) > 100 else ''}")
         
         # Salvează log-ul complet (pentru acum doar în terminal)
         self._save_complete_log(log_entry)
@@ -169,16 +132,12 @@ class ChatLogger:
         
         timestamp = datetime.now()
         
-        print(f"\n{'='*80}")
-        print(f"[FEEDBACK LOG] Timestamp: {timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"[FEEDBACK LOG] User ID: {user_id}")
-        print(f"[FEEDBACK LOG] Conversation ID: {conversation_id}")
-        print(f"[FEEDBACK LOG] Request ID: {request_id}")
-        print(f"[FEEDBACK LOG] Answer Index: {answer_index}")
-        print(f"[FEEDBACK LOG] Feedback: {feedback}")
+        # Log în terminal - doar informațiile care se salvează în DB
+        print(f"[DB LOG] 👍 Feedback | {feedback.upper()}")
+        print(f"  Conversation: {conversation_id}")
+        print(f"  User: {user_id or 'Anonymous'}")
         if feedback_text:
-            print(f"[FEEDBACK LOG] Feedback Text: {feedback_text}")
-        print(f"{'='*80}")
+            print(f"  Text: {feedback_text[:80]}{'...' if len(feedback_text) > 80 else ''}")
         
         # Încearcă să salveze în baza de date (asincron, fără a bloca aplicația)
         self._schedule_task(self._save_feedback_to_db(
@@ -191,54 +150,16 @@ class ChatLogger:
         ))
     
     def _save_complete_log(self, log_entry: ChatLogEntry) -> None:
-        """Salvează log-ul complet (pentru acum în terminal)"""
-        print(f"\n{'='*100}")
-        print("[COMPLETE CHAT LOG]")
-        print(f"Question: {log_entry.question}")
-        print("Answer:")
-        
-        # Afișăm răspunsul complet cu \n interpretate ca line breaks
-        # Gestionăm atât \n real cât și string literal \\n
-        formatted_answer = log_entry.answer.replace('\\n', '\n')
-        for line in formatted_answer.split('\n'):
-            print(f"    {line}")
-        
-        print(f"User ID: {log_entry.user_id}")
-        print(f"Conversation ID: {log_entry.conversation_id}")
-        print(f"Model: {log_entry.model_used}")
-        print(f"Temperature: {log_entry.temperature}")
-        print(f"Start Time: {log_entry.timestamp_start}")
-        print(f"End Time: {log_entry.timestamp_end}")
-        
+        """Salvează log-ul complet - doar un sumar al datelor din DB"""
+        duration = 0
         if log_entry.timestamp_end:
             duration = (log_entry.timestamp_end - log_entry.timestamp_start).total_seconds()
-            print(f"Duration: {duration:.2f} seconds")
         
-        print(f"Tokens Used: {log_entry.tokens_used}")
-        print(f"Feedback: {log_entry.feedback}")
-        print(f"Feedback Text: {log_entry.feedback_text}")
-        
-        # Afișăm prompt-ul într-un format mai frumos
-        print("Prompt (formatted):")
-        try:
-            prompt_obj = json.loads(log_entry.prompt) if isinstance(log_entry.prompt, str) else log_entry.prompt
-            # Afișăm fiecare mesaj separat cu formatare îmbunătățită
-            if isinstance(prompt_obj, list):
-                for i, message in enumerate(prompt_obj):
-                    print(f"  Message {i+1} ({message.get('role', 'unknown')}):")
-                    content = message.get('content', '')
-                    # Înlocuim \\n cu newlines reale pentru afișare
-                    formatted_content = content.replace('\\n', '\n')
-                    for line in formatted_content.split('\n'):
-                        print(f"    {line}")
-                    print()  # Linie goală între mesaje
-            else:
-                formatted_prompt = json.dumps(prompt_obj, ensure_ascii=False, indent=2)
-                print(formatted_prompt)
-        except (json.JSONDecodeError, AttributeError):
-            print(f"Prompt: {log_entry.prompt}")
-        
-        print(f"{'='*100}\n")
+        print(f"[DB LOG] 💾 Complete | Conv: {log_entry.conversation_id}")
+        print(f"  Q: {log_entry.question[:60]}{'...' if len(log_entry.question) > 60 else ''}")
+        print(f"  A: {log_entry.answer[:60]}{'...' if len(log_entry.answer) > 60 else ''}")
+        print(f"  Model: {log_entry.model_used} | Duration: {duration:.1f}s | Tokens: {log_entry.tokens_used or 'N/A'}")
+        print("")
     
     def _schedule_task(self, coro):
         """Programează o task asincronă, creând un event loop dacă este necesar"""
