@@ -195,7 +195,8 @@ class AzureSQLLogger:
             agentic_retrival_total_token_usage INT NULL,
             prompt_total_token_usage NVARCHAR(MAX) NULL,
             extra_info_thoughts NVARCHAR(MAX) NULL,
-            agentic_retrival_duration_seconds FLOAT NULL
+            agentic_retrival_duration_seconds FLOAT NULL,
+            total_duration_seconds FLOAT NULL
         );
         
         -- Add new columns if they don't exist (for existing tables)
@@ -213,6 +214,9 @@ class AzureSQLLogger:
             
         IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'agentic_retrival_duration_seconds')
             ALTER TABLE chat_logs ADD agentic_retrival_duration_seconds FLOAT NULL;
+            
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'total_duration_seconds')
+            ALTER TABLE chat_logs ADD total_duration_seconds FLOAT NULL;
         
         -- Remove old columns if they exist
         IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'prompt_text')
@@ -391,7 +395,8 @@ class AzureSQLLogger:
         answer: str,
         agentic_retrival_duration_seconds: Optional[float] = None,
         timestamp_end: Optional[datetime] = None,
-        prompt_total_token_usage: Optional[str] = None
+        prompt_total_token_usage: Optional[str] = None,
+        total_duration_seconds: Optional[float] = None
     ) -> bool:
         """
         Actualizează log-ul cu răspunsul, sfârșitul conversației și token usage-ul final
@@ -405,11 +410,12 @@ class AzureSQLLogger:
         SET answer = ?, 
             agentic_retrival_duration_seconds = ?, 
             timestamp_end = ?,
-            prompt_total_token_usage = ?
+            prompt_total_token_usage = ?,
+            total_duration_seconds = ?
         WHERE request_id = ?
         """
         
-        params = (answer, agentic_retrival_duration_seconds, timestamp_end, prompt_total_token_usage, request_id)
+        params = (answer, agentic_retrival_duration_seconds, timestamp_end, prompt_total_token_usage, total_duration_seconds, request_id)
         
         success = await self._execute_with_retry(update_sql, params)
         if success:

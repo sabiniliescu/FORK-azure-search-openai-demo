@@ -26,6 +26,7 @@ class ChatLogEntry:
     prompt_total_token_usage: Optional[str] = None
     timestamp_start_streaming: Optional[datetime] = None
     agentic_retrival_duration_seconds: Optional[float] = None
+    total_duration_seconds: Optional[float] = None
 
 
 class ChatLogger:
@@ -45,7 +46,8 @@ class ChatLogger:
         agentic_retrival_total_token_usage: Optional[int] = None,
         prompt_total_token_usage: Optional[str] = None,
         model_used: Optional[str] = None,
-        temperature: Optional[float] = None
+        temperature: Optional[float] = None,
+        timestamp_start: Optional[datetime] = None
     ) -> None:
         """Începe logging-ul pentru o cerere de chat"""
         if not self.enable_logging:
@@ -57,7 +59,7 @@ class ChatLogger:
             user_id=user_id,
             conversation_id=conversation_id,
             extra_info_thoughts=extra_info_thoughts,
-            timestamp_start=datetime.now(),
+            timestamp_start=timestamp_start or datetime.now(),  # Folosește timestamp-ul real dacă este disponibil
             timestamp_end=None,
             model_used=model_used,
             temperature=temperature,
@@ -114,6 +116,7 @@ class ChatLogger:
         
         # Calculează durata totală
         total_duration = (log_entry.timestamp_end - log_entry.timestamp_start).total_seconds()
+        log_entry.total_duration_seconds = total_duration
         
         # Log în terminal - doar informațiile care se salvează în DB
         print(f"[DB LOG] ✅ Chat End | ID: {request_id}")
@@ -131,7 +134,8 @@ class ChatLogger:
             answer=answer,
             agentic_retrival_duration_seconds=agentic_retrival_duration_seconds,
             timestamp_end=log_entry.timestamp_end,
-            prompt_total_token_usage=log_entry.prompt_total_token_usage
+            prompt_total_token_usage=log_entry.prompt_total_token_usage,
+            total_duration_seconds=log_entry.total_duration_seconds
         ))
         
         # Curăță din active logs
@@ -270,7 +274,8 @@ class ChatLogger:
         answer: str,
         agentic_retrival_duration_seconds: Optional[float],
         timestamp_end: datetime,
-        prompt_total_token_usage: Optional[str] = None
+        prompt_total_token_usage: Optional[str] = None,
+        total_duration_seconds: Optional[float] = None
     ) -> None:
         """Salvează sfârșitul chat-ului în baza de date (asincron)"""
         try:
@@ -280,7 +285,8 @@ class ChatLogger:
                 answer=answer,
                 agentic_retrival_duration_seconds=agentic_retrival_duration_seconds,
                 timestamp_end=timestamp_end,
-                prompt_total_token_usage=prompt_total_token_usage
+                prompt_total_token_usage=prompt_total_token_usage,
+                total_duration_seconds=total_duration_seconds
             )
         except Exception as e:
             # Aplicația continuă să ruleze chiar dacă baza de date nu este disponibilă

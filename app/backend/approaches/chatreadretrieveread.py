@@ -152,6 +152,11 @@ class ChatReadRetrieveReadApproach(ChatApproach):
             self.print_feedback(feedback_data)
         
         use_agentic_retrieval = True if overrides.get("use_agentic_retrieval") else False
+        
+        # Capturează timestamp-ul real de start pentru logging
+        from datetime import datetime
+        real_start_time = datetime.now()
+        
         self._log_timing(f"run_until_final_call: start use_agentic_retrieval={use_agentic_retrieval}")
         
         original_user_query = messages[-1]["content"]
@@ -218,6 +223,9 @@ class ChatReadRetrieveReadApproach(ChatApproach):
         
         total_duration = time.time() - start_time
         self._log_timing("run_until_final_call (pre OpenAI send) took", total_duration)
+        
+        # Adaugă timestamp-ul real de start pentru logging corect
+        extra_info.real_start_timestamp = real_start_time
         
         return (extra_info, chat_coroutine)
 

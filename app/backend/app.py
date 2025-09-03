@@ -292,6 +292,11 @@ async def chat(auth_claims: dict[str, Any]):
         if extra_info and hasattr(extra_info, 'agentic_duration_seconds'):
             agentic_duration = extra_info.agentic_duration_seconds
         
+        # Extragem timestamp-ul real de start dacă există
+        real_start_timestamp = None
+        if extra_info and hasattr(extra_info, 'real_start_timestamp'):
+            real_start_timestamp = extra_info.real_start_timestamp
+        
         # Începem logging-ul cu informațiile extrase
         # Capturăm modelul real din approach (dacă este disponibil)
         actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
@@ -305,7 +310,8 @@ async def chat(auth_claims: dict[str, Any]):
             agentic_retrival_total_token_usage=agentic_token_usage,
             prompt_total_token_usage=prompt_token_usage,
             model_used=actual_model,
-            temperature=overrides.get("temperature")
+            temperature=overrides.get("temperature"),
+            timestamp_start=real_start_timestamp
         )
         
         # Încercăm să extragem token usage din result pentru finish_chat_log
@@ -418,6 +424,11 @@ async def chat_stream(auth_claims: dict[str, Any]):
                                 agentic_duration = extra_info_received.agentic_duration_seconds
                                 agentic_duration_for_logging = agentic_duration
                             
+                            # Extragem timestamp-ul real de start dacă există
+                            real_start_timestamp = None
+                            if hasattr(extra_info_received, 'real_start_timestamp'):
+                                real_start_timestamp = extra_info_received.real_start_timestamp
+                            
                             # Capturăm modelul real din approach
                             actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
                             
@@ -430,7 +441,8 @@ async def chat_stream(auth_claims: dict[str, Any]):
                                 agentic_retrival_total_token_usage=agentic_token_usage,
                                 prompt_total_token_usage=prompt_token_usage,
                                 model_used=actual_model,
-                                temperature=overrides.get("temperature")
+                                temperature=overrides.get("temperature"),
+                                timestamp_start=real_start_timestamp
                             )
                             logging_started = True
                     
