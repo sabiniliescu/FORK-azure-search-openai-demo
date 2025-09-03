@@ -50,17 +50,18 @@ CREATE TABLE chat_logs (
     question NVARCHAR(MAX) NULL,
     answer NVARCHAR(MAX) NULL,
     timestamp_start DATETIME2 NOT NULL,
+    timestamp_start_streaming DATETIME2 NULL,
     timestamp_end DATETIME2 NULL,
     feedback NVARCHAR(50) NULL,
     feedback_text NVARCHAR(MAX) NULL,
     user_id NVARCHAR(255) NULL,
-    tokens_used INT NULL,
     model_used NVARCHAR(255) NULL,
     temperature FLOAT NULL,
-    session_id NVARCHAR(255) NULL,
     prompt_text NVARCHAR(MAX) NULL,
-    duration_seconds FLOAT NULL,
-    created_at DATETIME2 DEFAULT GETDATE()
+    prompt_total_token_usage INT NULL,
+    agentic_retrival_total_token_usage INT NULL,
+    agentic_retrival_duration_seconds FLOAT NULL,
+    duration_seconds FLOAT NULL
 );
 ```
 

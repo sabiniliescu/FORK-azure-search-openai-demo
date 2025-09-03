@@ -96,7 +96,8 @@ class ChatLogger:
         self,
         request_id: str,
         answer: str,
-        agentic_retrival_duration_seconds: Optional[float] = None
+        agentic_retrival_duration_seconds: Optional[float] = None,
+        final_prompt_token_usage: Optional[str] = None
     ) -> None:
         """Finalizează logging-ul pentru o cerere de chat"""
         if not self.enable_logging or request_id not in self.active_logs:
@@ -106,6 +107,10 @@ class ChatLogger:
         log_entry.answer = answer
         log_entry.timestamp_end = datetime.now()
         log_entry.agentic_retrival_duration_seconds = agentic_retrival_duration_seconds
+        
+        # Actualizează token usage-ul final dacă este disponibil
+        if final_prompt_token_usage:
+            log_entry.prompt_total_token_usage = final_prompt_token_usage
         
         # Calculează durata totală
         total_duration = (log_entry.timestamp_end - log_entry.timestamp_start).total_seconds()
@@ -125,7 +130,8 @@ class ChatLogger:
             request_id=request_id,
             answer=answer,
             agentic_retrival_duration_seconds=agentic_retrival_duration_seconds,
-            timestamp_end=log_entry.timestamp_end
+            timestamp_end=log_entry.timestamp_end,
+            prompt_total_token_usage=log_entry.prompt_total_token_usage
         ))
         
         # Curăță din active logs
@@ -263,15 +269,18 @@ class ChatLogger:
         request_id: str,
         answer: str,
         agentic_retrival_duration_seconds: Optional[float],
-        timestamp_end: datetime
+        timestamp_end: datetime,
+        prompt_total_token_usage: Optional[str] = None
     ) -> None:
         """Salvează sfârșitul chat-ului în baza de date (asincron)"""
         try:
-            await azure_sql_logger.log_chat_end(
+            # Folosim o funcție specială care actualizează și prompt_total_token_usage
+            await azure_sql_logger.log_chat_end_with_tokens(
                 request_id=request_id,
                 answer=answer,
                 agentic_retrival_duration_seconds=agentic_retrival_duration_seconds,
-                timestamp_end=timestamp_end
+                timestamp_end=timestamp_end,
+                prompt_total_token_usage=prompt_total_token_usage
             )
         except Exception as e:
             # Aplicația continuă să ruleze chiar dacă baza de date nu este disponibilă
@@ -339,43 +348,30 @@ class ChatLogger:
             return None
     
     def _extract_prompt_token_usage(self, extra_info_thoughts: list) -> Optional[str]:
-        """Extrage token usage total pentru toate prompt-urile din thoughts"""
+        """Extrage token usage total pentru generarea răspunsului final (fără agentic retrieval)"""
         try:
-            total_prompt_tokens = 0
-            total_completion_tokens = 0
-            total_reasoning_tokens = 0
-            
             print(f"[DEBUG] Processing {len(extra_info_thoughts)} thoughts for prompt token extraction")
             
-            # Iterează prin toate thoughts și adună token usage
-            for i, thought in enumerate(extra_info_thoughts):
-                print(f"[DEBUG] Thought {i}: title='{getattr(thought, 'title', 'N/A')}', has_props={hasattr(thought, 'props')}")
+            # Caută în ultimul thought - acolo se salvează token usage-ul final pentru răspuns
+            if extra_info_thoughts:
+                last_thought = extra_info_thoughts[-1]
+                print(f"[DEBUG] Last thought: title='{getattr(last_thought, 'title', 'N/A')}', has_props={hasattr(last_thought, 'props')}")
                 
-                if hasattr(thought, 'props') and thought.props:
-                    print(f"[DEBUG] Props keys: {list(thought.props.keys()) if thought.props else 'None'}")
-                    token_usage = thought.props.get('token_usage')
+                if hasattr(last_thought, 'props') and last_thought.props:
+                    print(f"[DEBUG] Last thought props keys: {list(last_thought.props.keys()) if last_thought.props else 'None'}")
+                    token_usage = last_thought.props.get('token_usage')
                     if token_usage:
-                        print(f"[DEBUG] Found token_usage: {token_usage}")
-                        if hasattr(token_usage, 'prompt_tokens'):
-                            total_prompt_tokens += token_usage.prompt_tokens or 0
-                        if hasattr(token_usage, 'completion_tokens'):
-                            total_completion_tokens += token_usage.completion_tokens or 0
-                        if hasattr(token_usage, 'reasoning_tokens'):
-                            total_reasoning_tokens += token_usage.reasoning_tokens or 0
+                        print(f"[DEBUG] Found final token_usage: {token_usage}")
+                        if hasattr(token_usage, 'total_tokens'):
+                            total_tokens = token_usage.total_tokens
+                            print(f"[DEBUG] Final total_tokens: {total_tokens}")
+                            return str(total_tokens)  # Returnează doar valoarea total ca string
+                        elif hasattr(token_usage, 'prompt_tokens') and hasattr(token_usage, 'completion_tokens'):
+                            total_tokens = (token_usage.prompt_tokens or 0) + (token_usage.completion_tokens or 0)
+                            print(f"[DEBUG] Calculated total_tokens: {total_tokens}")
+                            return str(total_tokens)
             
-            print(f"[DEBUG] Total tokens: prompt={total_prompt_tokens}, completion={total_completion_tokens}, reasoning={total_reasoning_tokens}")
-            
-            if total_prompt_tokens > 0 or total_completion_tokens > 0:
-                result = {
-                    'prompt_tokens': total_prompt_tokens,
-                    'completion_tokens': total_completion_tokens,
-                    'total_tokens': total_prompt_tokens + total_completion_tokens
-                }
-                if total_reasoning_tokens > 0:
-                    result['reasoning_tokens'] = total_reasoning_tokens
-                    
-                return json.dumps(result)
-            
+            print("[DEBUG] No token usage found in final thought")
             return None
         except Exception as e:
             print(f"[DATABASE ERROR] Eroare la extragerea prompt token usage: {e}")

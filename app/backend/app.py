@@ -448,10 +448,16 @@ async def chat_stream(auth_claims: dict[str, Any]):
             
             # La sfârșitul stream-ului, finalizăm logging-ul doar dacă l-am început
             if logging_started:
+                # Extragem token usage-ul final din ultimul extra_info_received
+                final_prompt_token_usage = None
+                if extra_info_received and hasattr(extra_info_received, 'thoughts'):
+                    final_prompt_token_usage = chat_logger._extract_prompt_token_usage(extra_info_received.thoughts)
+                
                 chat_logger.finish_chat_log(
                     request_id=request_id,
                     answer=full_answer,
-                    agentic_retrival_duration_seconds=agentic_duration_for_logging
+                    agentic_retrival_duration_seconds=agentic_duration_for_logging,
+                    final_prompt_token_usage=final_prompt_token_usage
                 )
         
         response = await make_response(format_as_ndjson(logged_result_generator()))

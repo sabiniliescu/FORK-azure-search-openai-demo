@@ -385,6 +385,38 @@ class AzureSQLLogger:
         
         return success
     
+    async def log_chat_end_with_tokens(
+        self,
+        request_id: str,
+        answer: str,
+        agentic_retrival_duration_seconds: Optional[float] = None,
+        timestamp_end: Optional[datetime] = None,
+        prompt_total_token_usage: Optional[str] = None
+    ) -> bool:
+        """
+        Actualizează log-ul cu răspunsul, sfârșitul conversației și token usage-ul final
+        Returnează True dacă operația a reușit, False altfel
+        """
+        if timestamp_end is None:
+            timestamp_end = datetime.now()
+        
+        update_sql = """
+        UPDATE chat_logs 
+        SET answer = ?, 
+            agentic_retrival_duration_seconds = ?, 
+            timestamp_end = ?,
+            prompt_total_token_usage = ?
+        WHERE request_id = ?
+        """
+        
+        params = (answer, agentic_retrival_duration_seconds, timestamp_end, prompt_total_token_usage, request_id)
+        
+        success = await self._execute_with_retry(update_sql, params)
+        if success:
+            self._log_safely(f"[DATABASE] Chat end with tokens logged pentru request_id: {request_id}")
+        
+        return success
+    
     async def log_streaming_start(
         self,
         request_id: str,
