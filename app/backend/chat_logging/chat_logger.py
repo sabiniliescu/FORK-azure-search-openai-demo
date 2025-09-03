@@ -277,6 +277,21 @@ class ChatLogger:
             # Aplicația continuă să ruleze chiar dacă baza de date nu este disponibilă
             print(f"[DATABASE ERROR] Nu s-a putut salva chat end în DB: {e}")
     
+    async def _save_streaming_start_to_db(
+        self,
+        request_id: str,
+        timestamp_start_streaming: datetime
+    ) -> None:
+        """Salvează timestamp-ul de început al streaming-ului în baza de date (asincron)"""
+        try:
+            await azure_sql_logger.log_streaming_start(
+                request_id=request_id,
+                timestamp_start_streaming=timestamp_start_streaming
+            )
+        except Exception as e:
+            # Aplicația continuă să ruleze chiar dacă baza de date nu este disponibilă
+            print(f"[DATABASE ERROR] Nu s-a putut salva streaming start în DB: {e}")
+
     async def _save_feedback_to_db(
         self,
         conversation_id: str,

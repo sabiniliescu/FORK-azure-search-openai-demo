@@ -577,7 +577,7 @@ class ChatReadRetrieveReadApproach(ChatApproach):
         # Adaugă durata în extra_info pentru logging
         extra_info.agentic_duration_seconds = total_duration
         
-        print("DEBUG extra_info.thoughts:", extra_info.thoughts)
+        # print("DEBUG extra_info.thoughts:", extra_info.thoughts)
         return extra_info
 
     def create_chat_completion(
