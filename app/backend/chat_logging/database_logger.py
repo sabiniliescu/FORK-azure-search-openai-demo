@@ -65,13 +65,47 @@ class AzureSQLLogger:
         if self.enable_db_logging and self.connection_string:
             self._schedule_safe_task(self._initialize_database())
     
+    def _detect_odbc_driver(self) -> Optional[str]:
+        """Detectează cel mai recent driver ODBC SQL Server disponibil"""
+        try:
+            available_drivers = pyodbc.drivers()
+            
+            # Lista de driver-i în ordinea preferinței (cel mai nou primul)
+            preferred_drivers = [
+                "ODBC Driver 18 for SQL Server",
+                "ODBC Driver 17 for SQL Server", 
+                "ODBC Driver 13 for SQL Server",
+                "ODBC Driver 11 for SQL Server",
+                "SQL Server Native Client 11.0",
+                "SQL Server"
+            ]
+            
+            # Găsește primul driver disponibil din lista preferată
+            for driver in preferred_drivers:
+                if driver in available_drivers:
+                    self._log_safely(f"[DATABASE] Driver ODBC detectat: {driver}")
+                    return driver
+            
+            self._log_safely("[DATABASE] Nu s-a găsit niciun driver ODBC SQL Server compatibil!")
+            return None
+            
+        except Exception as e:
+            self._log_safely(f"[DATABASE] Eroare la detectarea driver-ului ODBC: {e}")
+            return None
+
     def _build_connection_string(self) -> Optional[str]:
         """Construiește connection string-ul pentru Azure SQL Database"""
         try:
+            # Detectează driver-ul ODBC disponibil
+            odbc_driver = self._detect_odbc_driver()
+            if not odbc_driver:
+                self._log_safely("[DATABASE] Nu s-a găsit niciun driver ODBC compatibil. Database logging dezactivat.")
+                return None
+            
             server = os.getenv("AZURE_SQL_SERVER", "mihaiweb.database.windows.net")
             database = os.getenv("AZURE_SQL_DATABASE", "MihAI_Web_logs")
-            username = os.getenv("AZURE_SQL_USERNAME", "mihaiuser")
-            password = os.getenv("AZURE_SQL_PASSWORD", "Parola_Complexa_123!")
+            username = os.getenv("AZURE_SQL_USERNAME", "")
+            password = os.getenv("AZURE_SQL_PASSWORD", "")
             
             if not username or not password:
                 self._log_safely("[DATABASE] AZURE_SQL_USERNAME sau AZURE_SQL_PASSWORD nu sunt configurate. Database logging dezactivat.")
@@ -82,7 +116,7 @@ class AzureSQLLogger:
                 self.max_connection_timeout = 30  # Măresc timeout-ul pentru Azure SQL
             
             connection_string = (
-                f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+                f"DRIVER={{{odbc_driver}}};"
                 f"SERVER=tcp:{server},1433;"
                 f"DATABASE={database};"
                 f"UID={username};"
@@ -92,6 +126,7 @@ class AzureSQLLogger:
                 f"Connection Timeout={self.max_connection_timeout};"
             )
             
+            self._log_safely(f"[DATABASE] Connection string construit cu driver: {odbc_driver}")
             return connection_string
             
         except Exception as e:
@@ -150,17 +185,47 @@ class AzureSQLLogger:
             question NVARCHAR(MAX) NULL,
             answer NVARCHAR(MAX) NULL,
             timestamp_start DATETIME2 NOT NULL,
+            timestamp_start_streaming DATETIME2 NULL,
             timestamp_end DATETIME2 NULL,
             feedback NVARCHAR(50) NULL,
             feedback_text NVARCHAR(MAX) NULL,
             user_id NVARCHAR(255) NULL,
-            tokens_used INT NULL,
             model_used NVARCHAR(255) NULL,
             temperature FLOAT NULL,
-            prompt_text NVARCHAR(MAX) NULL,
-            duration_seconds FLOAT NULL,
-            created_at DATETIME2 DEFAULT GETDATE()
+            agentic_retrival_total_token_usage INT NULL,
+            prompt_total_token_usage NVARCHAR(MAX) NULL,
+            extra_info_thoughts NVARCHAR(MAX) NULL,
+            agentic_retrival_duration_seconds FLOAT NULL
         );
+        
+        -- Add new columns if they don't exist (for existing tables)
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'timestamp_start_streaming')
+            ALTER TABLE chat_logs ADD timestamp_start_streaming DATETIME2 NULL;
+            
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'agentic_retrival_total_token_usage')
+            ALTER TABLE chat_logs ADD agentic_retrival_total_token_usage INT NULL;
+            
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'prompt_total_token_usage')
+            ALTER TABLE chat_logs ADD prompt_total_token_usage NVARCHAR(MAX) NULL;
+            
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'extra_info_thoughts')
+            ALTER TABLE chat_logs ADD extra_info_thoughts NVARCHAR(MAX) NULL;
+            
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'agentic_retrival_duration_seconds')
+            ALTER TABLE chat_logs ADD agentic_retrival_duration_seconds FLOAT NULL;
+        
+        -- Remove old columns if they exist
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'prompt_text')
+            ALTER TABLE chat_logs DROP COLUMN prompt_text;
+            
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'tokens_used')
+            ALTER TABLE chat_logs DROP COLUMN tokens_used;
+            
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'duration_seconds')
+            ALTER TABLE chat_logs DROP COLUMN duration_seconds;
+            
+        IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('chat_logs') AND name = 'created_at')
+            ALTER TABLE chat_logs DROP COLUMN created_at;
         
         -- Index pentru căutare rapidă după conversation_id
         IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='IX_chat_logs_conversation_id')
@@ -246,10 +311,13 @@ class AzureSQLLogger:
         request_id: str,
         question: str,
         user_id: Optional[str],
-        prompt_text: str,
+        extra_info_thoughts: str,
+        agentic_retrival_total_token_usage: Optional[int] = None,
+        prompt_total_token_usage: Optional[str] = None,
         model_used: Optional[str] = None,
         temperature: Optional[float] = None,
-        timestamp_start: Optional[datetime] = None
+        timestamp_start: Optional[datetime] = None,
+        timestamp_start_streaming: Optional[datetime] = None
     ) -> bool:
         """
         Loghează începutul unei conversații
@@ -260,9 +328,10 @@ class AzureSQLLogger:
         
         insert_sql = """
         INSERT INTO chat_logs (
-            conversation_id, request_id, question, user_id, prompt_text,
-            model_used, temperature, timestamp_start
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            conversation_id, request_id, question, user_id, extra_info_thoughts,
+            agentic_retrival_total_token_usage, prompt_total_token_usage, 
+            model_used, temperature, timestamp_start, timestamp_start_streaming
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         params = (
@@ -270,10 +339,13 @@ class AzureSQLLogger:
             request_id,
             question,
             user_id,
-            prompt_text,
+            extra_info_thoughts,
+            agentic_retrival_total_token_usage,
+            prompt_total_token_usage,
             model_used,
             temperature,
-            timestamp_start
+            timestamp_start,
+            timestamp_start_streaming
         )
         
         success = await self._execute_with_retry(insert_sql, params)
@@ -287,7 +359,7 @@ class AzureSQLLogger:
         self,
         request_id: str,
         answer: str,
-        tokens_used: Optional[int] = None,
+        agentic_retrival_duration_seconds: Optional[float] = None,
         timestamp_end: Optional[datetime] = None
     ) -> bool:
         """
@@ -297,21 +369,45 @@ class AzureSQLLogger:
         if timestamp_end is None:
             timestamp_end = datetime.now()
         
-        # Calculăm durata pe baza valorilor din baza de date
         update_sql = """
         UPDATE chat_logs 
         SET answer = ?, 
-            tokens_used = ?, 
-            timestamp_end = ?,
-            duration_seconds = DATEDIFF_BIG(MILLISECOND, timestamp_start, ?) / 1000.0
+            agentic_retrival_duration_seconds = ?, 
+            timestamp_end = ?
         WHERE request_id = ?
         """
         
-        params = (answer, tokens_used, timestamp_end, timestamp_end, request_id)
+        params = (answer, agentic_retrival_duration_seconds, timestamp_end, request_id)
         
         success = await self._execute_with_retry(update_sql, params)
         if success:
             self._log_safely(f"[DATABASE] Chat end logged pentru request_id: {request_id}")
+        
+        return success
+    
+    async def log_streaming_start(
+        self,
+        request_id: str,
+        timestamp_start_streaming: Optional[datetime] = None
+    ) -> bool:
+        """
+        Actualizează log-ul cu timestamp-ul de început al streaming-ului
+        Returnează True dacă operația a reușit, False altfel
+        """
+        if timestamp_start_streaming is None:
+            timestamp_start_streaming = datetime.now()
+        
+        update_sql = """
+        UPDATE chat_logs 
+        SET timestamp_start_streaming = ?
+        WHERE request_id = ?
+        """
+        
+        params = (timestamp_start_streaming, request_id)
+        
+        success = await self._execute_with_retry(update_sql, params)
+        if success:
+            self._log_safely(f"[DATABASE] Streaming start logged pentru request_id: {request_id}")
         
         return success
     
@@ -389,9 +485,10 @@ class AzureSQLLogger:
         select_sql = """
         SELECT TOP (?) 
             id, conversation_id, request_id, question, answer, 
-            timestamp_start, timestamp_end, feedback, feedback_text,
-            user_id, tokens_used, model_used, temperature,
-            duration_seconds, created_at
+            timestamp_start, timestamp_start_streaming, timestamp_end, feedback, feedback_text,
+            user_id, model_used, temperature,
+            agentic_retrival_total_token_usage, prompt_total_token_usage,
+            extra_info_thoughts, agentic_retrival_duration_seconds, created_at
         FROM chat_logs 
         WHERE conversation_id = ?
         ORDER BY timestamp_start DESC

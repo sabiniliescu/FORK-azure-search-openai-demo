@@ -257,20 +257,6 @@ async def chat(auth_claims: dict[str, Any]):
         user_id = auth_claims.get("oid")  # Object ID din Azure AD
         overrides = context.get("overrides", {})
         
-        # Începem logging-ul
-        # Capturăm modelul real din approach (dacă este disponibil)
-        actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
-        
-        chat_logger.start_chat_log(
-            request_id=request_id,
-            question=user_question,
-            user_id=user_id,
-            conversation_id=session_state,
-            prompt=json.dumps(messages, ensure_ascii=False, indent=2),  # Prompt-ul complet ca JSON cu diacritice
-            model_used=actual_model,
-            temperature=overrides.get("temperature")
-        )
-        
         result = await approach.run(
             request_json["messages"],
             context=context,
@@ -281,17 +267,54 @@ async def chat(auth_claims: dict[str, Any]):
         answer = result.get("message", {}).get("content", "") if isinstance(result, dict) else ""
         tokens_used = None
         
-        # Încercăm să extragem token usage din result
+        # Extragem extra_info pentru logging extins
+        extra_info = None
         if isinstance(result, dict):
-            context_data = result.get("context")
-            if context_data and hasattr(context_data, "data_points"):
-                if hasattr(context_data.data_points, "token_count"):
-                    tokens_used = context_data.data_points.token_count
+            extra_info = result.get("context")
+        
+        # Extragem token usage din extra_info dacă este disponibil
+        agentic_token_usage = None
+        prompt_token_usage = None
+        thoughts_serialized = ""
+        agentic_duration = None
+        
+        if extra_info and hasattr(extra_info, 'thoughts'):
+            # Extragem token usage pentru agentic retrieval
+            agentic_token_usage = chat_logger._extract_agentic_token_usage(extra_info.thoughts)
+            
+            # Extragem token usage total pentru prompt-uri
+            prompt_token_usage = chat_logger._extract_prompt_token_usage(extra_info.thoughts)
+            
+            # Serializăm thoughts pentru salvare
+            thoughts_serialized = chat_logger._serialize_thoughts(extra_info.thoughts)
+        
+        # Extragem durata agentic dacă există
+        if extra_info and hasattr(extra_info, 'agentic_duration_seconds'):
+            agentic_duration = extra_info.agentic_duration_seconds
+        
+        # Începem logging-ul cu informațiile extrase
+        # Capturăm modelul real din approach (dacă este disponibil)
+        actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
+        
+        chat_logger.start_chat_log(
+            request_id=request_id,
+            question=user_question,
+            user_id=user_id,
+            conversation_id=session_state,
+            extra_info_thoughts=thoughts_serialized,
+            agentic_retrival_total_token_usage=agentic_token_usage,
+            prompt_total_token_usage=prompt_token_usage,
+            model_used=actual_model,
+            temperature=overrides.get("temperature")
+        )
+        
+        # Încercăm să extragem token usage din result pentru finish_chat_log
+        # Tokens_used nu mai e folosit - eliminat din funcție
         
         chat_logger.finish_chat_log(
             request_id=request_id,
             answer=answer,
-            tokens_used=tokens_used
+            agentic_retrival_duration_seconds=agentic_duration
         )
         
         # Adăugăm informații de tracking pentru feedback
@@ -342,20 +365,6 @@ async def chat_stream(auth_claims: dict[str, Any]):
         user_id = auth_claims.get("oid")  # Object ID din Azure AD
         overrides = context.get("overrides", {})
         
-        # Începem logging-ul
-        # Capturăm modelul real din approach (dacă este disponibil)
-        actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
-        
-        chat_logger.start_chat_log(
-            request_id=request_id,
-            question=user_question,
-            user_id=user_id,
-            conversation_id=session_state,
-            prompt=json.dumps(messages, ensure_ascii=False, indent=2),  # Prompt-ul complet ca JSON cu diacritice
-            model_used=actual_model,
-            temperature=overrides.get("temperature")
-        )
-        
         result = await approach.run_stream(
             request_json["messages"],
             context=context,
@@ -365,9 +374,11 @@ async def chat_stream(auth_claims: dict[str, Any]):
         # Pentru stream, colectăm răspunsul pentru logging
         async def logged_result_generator():
             full_answer = ""
-            tokens_used = None
             extra_info_received = None
             first_item = True
+            logging_started = False
+            streaming_started = False
+            agentic_duration_for_logging = None
             
             async for item in result:
                 if isinstance(item, dict):
@@ -380,29 +391,68 @@ async def chat_stream(auth_claims: dict[str, Any]):
                         }
                         first_item = False
                     
-                    # Salvăm extra_info pentru later
-                    if "context" in item and hasattr(item["context"], "data_points"):
+                    # Salvăm extra_info și începem logging când primim context
+                    if "context" in item:
                         extra_info_received = item["context"]
+                        
+                        # Începem logging-ul când avem context cu extra_info
+                        if not logging_started and extra_info_received:
+                            # Extragem informațiile pentru logging extins
+                            agentic_token_usage = None
+                            prompt_token_usage = None
+                            thoughts_serialized = ""
+                            agentic_duration = None
+                            
+                            if hasattr(extra_info_received, 'thoughts'):
+                                # Extragem token usage pentru agentic retrieval
+                                agentic_token_usage = chat_logger._extract_agentic_token_usage(extra_info_received.thoughts)
+                                
+                                # Extragem token usage total pentru prompt-uri
+                                prompt_token_usage = chat_logger._extract_prompt_token_usage(extra_info_received.thoughts)
+                                
+                                # Serializăm thoughts pentru salvare
+                                thoughts_serialized = chat_logger._serialize_thoughts(extra_info_received.thoughts)
+                            
+                            # Extragem durata agentic dacă există
+                            if hasattr(extra_info_received, 'agentic_duration_seconds'):
+                                agentic_duration = extra_info_received.agentic_duration_seconds
+                                agentic_duration_for_logging = agentic_duration
+                            
+                            # Capturăm modelul real din approach
+                            actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
+                            
+                            chat_logger.start_chat_log(
+                                request_id=request_id,
+                                question=user_question,
+                                user_id=user_id,
+                                conversation_id=session_state,
+                                extra_info_thoughts=thoughts_serialized,
+                                agentic_retrival_total_token_usage=agentic_token_usage,
+                                prompt_total_token_usage=prompt_token_usage,
+                                model_used=actual_model,
+                                temperature=overrides.get("temperature")
+                            )
+                            logging_started = True
                     
                     # Acumulăm răspunsul pentru logging
                     if "delta" in item and isinstance(item["delta"], dict) and "content" in item["delta"]:
                         content = item["delta"]["content"]
                         if content:
+                            # Marcăm începutul streaming-ului la primul content
+                            if not streaming_started and logging_started:
+                                chat_logger.log_streaming_start(request_id=request_id)
+                                streaming_started = True
                             full_answer += content
                 
                 yield item
             
-            # Extragem token usage din extra_info dacă este disponibil
-            if extra_info_received and hasattr(extra_info_received, "data_points"):
-                if hasattr(extra_info_received.data_points, "token_count"):
-                    tokens_used = extra_info_received.data_points.token_count
-            
-            # La sfârșitul stream-ului, finalizăm logging-ul
-            chat_logger.finish_chat_log(
-                request_id=request_id,
-                answer=full_answer,
-                tokens_used=tokens_used
-            )
+            # La sfârșitul stream-ului, finalizăm logging-ul doar dacă l-am început
+            if logging_started:
+                chat_logger.finish_chat_log(
+                    request_id=request_id,
+                    answer=full_answer,
+                    agentic_retrival_duration_seconds=agentic_duration_for_logging
+                )
         
         response = await make_response(format_as_ndjson(logged_result_generator()))
         response.timeout = None  # type: ignore

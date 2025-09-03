@@ -574,9 +574,10 @@ class ChatReadRetrieveReadApproach(ChatApproach):
         total_duration = time.time() - start_time
         self._log_timing("run_agentic_retrieval_approach total took", total_duration)
         
-        # print("DEBUG extra_info:", extra_info)
-        # print("DEBUG extra_info.data_points:", extra_info.data_points)
-        # print("DEBUG extra_info.thoughts:", extra_info.thoughts)
+        # Adaugă durata în extra_info pentru logging
+        extra_info.agentic_duration_seconds = total_duration
+        
+        print("DEBUG extra_info.thoughts:", extra_info.thoughts)
         return extra_info
 
     def create_chat_completion(
