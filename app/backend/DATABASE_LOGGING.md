@@ -67,8 +67,9 @@ CREATE TABLE chat_logs (
 
 ### Resilience și Error Handling
 
-- **Conexiuni cu retry**: Sistemul încearcă de 3 ori să se conecteze la baza de date
-- **Timeouts configurabile**: Conexiunile au timeout de 10 secunde
+- **Conexiuni cu retry robust**: Sistemul folosește tenacity pentru retry logic cu exponential backoff (5 încercări, până la 30s delay)
+- **Handling pentru serverless**: Detectează și gestionează erorile specifice Azure SQL Serverless (40613, 40615)
+- **Timeouts configurabile**: Conexiunile au timeout de 60 secunde pentru serverless care se trezește
 - **Continuitate aplicație**: Dacă baza de date nu este disponibilă, aplicația continuă să funcționeze
 - **Logging minimal de erori**: Erorile de bază de date sunt loggate o dată la 5 minute pentru a evita spam-ul
 

@@ -20,6 +20,16 @@ except ImportError:
     PYODBC_AVAILABLE = False
     print("⚠️ [DATABASE WARNING] pyodbc nu este instalat. Database logging DEZACTIVAT.", file=sys.stdout)
 
+# Import tenacity pentru retry logic robust
+try:
+    import tenacity
+    TENACITY_AVAILABLE = True
+    print("🎉 [DATABASE SUCCESS] tenacity INSTALAT! Retry logic îmbunătățit ACTIVAT! 🎉", file=sys.stdout)
+except ImportError:
+    tenacity = None
+    TENACITY_AVAILABLE = False
+    print("⚠️ [DATABASE WARNING] tenacity nu este instalat. Folosesc retry logic simplu.", file=sys.stdout)
+
 # Încarcă variabilele de mediu la nivel de modul
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), ".env")
 load_dotenv(env_path, override=True)
@@ -50,14 +60,18 @@ class AzureSQLLogger:
             
         self.enable_db_logging = enable_db_logging
         self.connection_string = self._build_connection_string()
-        self.connection_retry_count = 3
-        self.connection_retry_delay = 5  # secunde - măresc pentru Azure SQL
-        self.max_connection_timeout = 30  # secunde - măresc pentru Azure SQL
+        self.connection_retry_count = 5  # Mai multe încercări pentru serverless
+        self.connection_retry_delay = 3  # secunde - mai scurt pentru retry mai rapid
+        self.max_connection_timeout = 60  # secunde - mai lung pentru serverless care se trezește
         
         # Mesaj de confirmare că pyodbc funcționează
         if self.enable_db_logging and self.connection_string:
             self._log_safely("🎉 [DATABASE INIT] pyodbc disponibil! Database logging ACTIVAT!")
             self._log_safely(f"🔗 [DATABASE INIT] Connection string configurat pentru: {os.getenv('AZURE_SQL_SERVER', 'N/A')}")
+            if TENACITY_AVAILABLE:
+                self._log_safely("🔄 [DATABASE INIT] Retry logic robust ACTIVAT cu tenacity (5 încercări, exponential backoff)")
+            else:
+                self._log_safely("🔄 [DATABASE INIT] Retry logic simplu ACTIVAT (5 încercări)")
         
         # Flag pentru a evita spam-ul de erori în log dacă baza de date nu e disponibilă
         self.last_connection_error_time = 0
@@ -286,10 +300,46 @@ class AzureSQLLogger:
         return False
     
     async def _execute_with_retry(self, sql: str, params: tuple) -> bool:
-        """Execută SQL cu retry logic"""
+        """Execută SQL cu retry logic robust folosind tenacity"""
         if not PYODBC_AVAILABLE or not self.enable_db_logging or not self.connection_string:
             return False
         
+        if TENACITY_AVAILABLE:
+            # Folosește tenacity pentru retry logic mai robust
+            @tenacity.retry(
+                stop=tenacity.stop_after_attempt(5),  # Mai multe încercări pentru serverless
+                wait=tenacity.wait_chain(
+                    tenacity.wait_fixed(10),  # Prima încercare: 10s
+                    tenacity.wait_fixed(10),  # A doua încercare: 10s
+                    tenacity.wait_fixed(20),  # A treia încercare: 20s
+                    tenacity.wait_fixed(30),  # A patra încercare: 30s
+                    tenacity.wait_fixed(45)   # A cincea încercare: 45s
+                ),
+                retry=tenacity.retry_if_exception_type((pyodbc.Error, ConnectionError, TimeoutError)),
+                before_sleep=self._log_retry_attempt
+            )
+            async def execute_with_tenacity():
+                await asyncio.to_thread(self._execute_sql, sql, params)
+                return True
+            
+            try:
+                return await execute_with_tenacity()
+            except tenacity.RetryError as e:
+                if self._should_log_connection_error():
+                    self._log_safely(f"[DATABASE] Toate încercările tenacity au eșuat: {e}")
+                return False
+        else:
+            # Fallback la retry logic simplu dacă tenacity nu e disponibil
+            return await self._execute_with_simple_retry(sql, params)
+    
+    def _log_retry_attempt(self, retry_state):
+        """Loghează încercările de retry"""
+        attempt = retry_state.attempt_number
+        if attempt > 1:  # Nu loga prima încercare
+            self._log_safely(f"[DATABASE] Retry attempt {attempt} după {retry_state.idle_for:.1f}s")
+    
+    async def _execute_with_simple_retry(self, sql: str, params: tuple) -> bool:
+        """Execută SQL cu retry logic simplu (fallback)"""
         for attempt in range(self.connection_retry_count):
             try:
                 await asyncio.to_thread(self._execute_sql, sql, params)
@@ -299,7 +349,7 @@ class AzureSQLLogger:
                 if attempt == self.connection_retry_count - 1:
                     # Ultima încercare eșuată
                     if self._should_log_connection_error():
-                        self._log_safely(f"[DATABASE] Toate încercările de conectare au eșuat: {e}")
+                        self._log_safely(f"[DATABASE] Toate încercările simple au eșuat: {e}")
                     return False
                 else:
                     # Încearcă din nou după delay
@@ -308,7 +358,7 @@ class AzureSQLLogger:
         return False
     
     def _execute_sql(self, sql: str, params: tuple):
-        """Execută SQL sincrn în thread-ul de background"""
+        """Execută SQL sincrn în thread-ul de background cu handling mai bun pentru erori"""
         connection = None
         try:
             connection = pyodbc.connect(self.connection_string, timeout=self.max_connection_timeout)
@@ -316,12 +366,36 @@ class AzureSQLLogger:
             cursor.execute(sql, params)
             connection.commit()
             
+        except pyodbc.Error as e:
+            # Erori specifice pyodbc/SQL Server
+            error_code = getattr(e, 'args', [None])[0]
+            if error_code in [40613, 40615]:  # Erori de serverless paused
+                self._log_safely(f"[DATABASE] Serverless paused detectat (error {error_code}), retry va fi încercat")
+            raise  # Re-raise pentru retry
+            
+        except (ConnectionError, TimeoutError) as e:
+            # Erori de conexiune generală
+            self._log_safely(f"[DATABASE] Eroare de conexiune detectată: {e}")
+            raise  # Re-raise pentru retry
+            
+        except TypeError as e:
+            # Erori de tip (ex: float() argument must be a string or a number, not 'list')
+            self._log_safely(f"[DATABASE] Eroare de tip în parametri: {e}")
+            self._log_safely(f"[DATABASE] SQL: {sql}")
+            self._log_safely(f"[DATABASE] Params: {params}")
+            raise  # Re-raise pentru retry
+            
+        except Exception as e:
+            # Alte erori neașteptate
+            self._log_safely(f"[DATABASE] Eroare neașteptată la execuție SQL: {e}")
+            raise  # Re-raise pentru retry
+            
         finally:
             if connection:
                 try:
                     connection.close()
-                except:
-                    pass
+                except Exception as close_error:
+                    self._log_safely(f"[DATABASE] Eroare la închiderea conexiunii: {close_error}")
     
     async def log_chat_start(
         self,
@@ -341,8 +415,25 @@ class AzureSQLLogger:
         Loghează începutul unei conversații
         Returnează True dacă operația a reușit, False altfel
         """
-        if timestamp_start is None:
-            timestamp_start = self.get_bucharest_time()
+        # Validare tipuri parametri
+        if agentic_retrival_total_token_usage is not None and not isinstance(agentic_retrival_total_token_usage, int):
+            self._log_safely(f"[DATABASE ERROR] agentic_retrival_total_token_usage trebuie să fie int, primit {type(agentic_retrival_total_token_usage)}: {agentic_retrival_total_token_usage}")
+            return False
+        if temperature is not None and not isinstance(temperature, (float, int)):
+            self._log_safely(f"[DATABASE ERROR] temperature trebuie să fie float sau int, primit {type(temperature)}: {temperature}")
+            return False
+        if timestamp_start is not None and not isinstance(timestamp_start, datetime):
+            self._log_safely(f"[DATABASE ERROR] timestamp_start trebuie să fie datetime, primit {type(timestamp_start)}: {timestamp_start}")
+            return False
+        if timestamp_start_streaming is not None and not isinstance(timestamp_start_streaming, datetime):
+            self._log_safely(f"[DATABASE ERROR] timestamp_start_streaming trebuie să fie datetime, primit {type(timestamp_start_streaming)}: {timestamp_start_streaming}")
+            return False
+        
+        # Convertește datetime la naive (fără timezone) pentru compatibilitate cu pyodbc
+        if isinstance(timestamp_start, datetime) and timestamp_start.tzinfo is not None:
+            timestamp_start = timestamp_start.replace(tzinfo=None)
+        if isinstance(timestamp_start_streaming, datetime) and timestamp_start_streaming.tzinfo is not None:
+            timestamp_start_streaming = timestamp_start_streaming.replace(tzinfo=None)
         
         insert_sql = """
         INSERT INTO chat_logs (
@@ -384,8 +475,17 @@ class AzureSQLLogger:
         Actualizează log-ul cu răspunsul și sfârșitul conversației
         Returnează True dacă operația a reușit, False altfel
         """
-        if timestamp_end is None:
-            timestamp_end = self.get_bucharest_time()
+        # Validare tipuri parametri
+        if agentic_retrival_duration_seconds is not None and not isinstance(agentic_retrival_duration_seconds, (float, int)):
+            self._log_safely(f"[DATABASE ERROR] agentic_retrival_duration_seconds trebuie să fie float sau int, primit {type(agentic_retrival_duration_seconds)}: {agentic_retrival_duration_seconds}")
+            return False
+        if timestamp_end is not None and not isinstance(timestamp_end, datetime):
+            self._log_safely(f"[DATABASE ERROR] timestamp_end trebuie să fie datetime, primit {type(timestamp_end)}: {timestamp_end}")
+            return False
+        
+        # Convertește datetime la naive
+        if isinstance(timestamp_end, datetime) and timestamp_end.tzinfo is not None:
+            timestamp_end = timestamp_end.replace(tzinfo=None)
         
         update_sql = """
         UPDATE chat_logs 
@@ -416,8 +516,23 @@ class AzureSQLLogger:
         Actualizează log-ul cu răspunsul, sfârșitul conversației și token usage-ul final
         Returnează True dacă operația a reușit, False altfel
         """
-        if timestamp_end is None:
-            timestamp_end = datetime.now()
+        # Validare tipuri parametri
+        if agentic_retrival_duration_seconds is not None and not isinstance(agentic_retrival_duration_seconds, (float, int)):
+            self._log_safely(f"[DATABASE ERROR] agentic_retrival_duration_seconds trebuie să fie float sau int, primit {type(agentic_retrival_duration_seconds)}: {agentic_retrival_duration_seconds}")
+            return False
+        if total_duration_seconds is not None and not isinstance(total_duration_seconds, (float, int)):
+            self._log_safely(f"[DATABASE ERROR] total_duration_seconds trebuie să fie float sau int, primit {type(total_duration_seconds)}: {total_duration_seconds}")
+            return False
+        if timestamp_end is not None and not isinstance(timestamp_end, datetime):
+            self._log_safely(f"[DATABASE ERROR] timestamp_end trebuie să fie datetime, primit {type(timestamp_end)}: {timestamp_end}")
+            return False
+        if prompt_total_token_usage is not None and not isinstance(prompt_total_token_usage, str):
+            self._log_safely(f"[DATABASE ERROR] prompt_total_token_usage trebuie să fie str, primit {type(prompt_total_token_usage)}: {prompt_total_token_usage}")
+            return False
+        
+        # Convertește datetime la naive
+        if isinstance(timestamp_end, datetime) and timestamp_end.tzinfo is not None:
+            timestamp_end = timestamp_end.replace(tzinfo=None)
         
         update_sql = """
         UPDATE chat_logs 
@@ -446,8 +561,14 @@ class AzureSQLLogger:
         Actualizează log-ul cu timestamp-ul de început al streaming-ului
         Returnează True dacă operația a reușit, False altfel
         """
-        if timestamp_start_streaming is None:
-            timestamp_start_streaming = datetime.now()
+        # Validare tipuri parametri
+        if timestamp_start_streaming is not None and not isinstance(timestamp_start_streaming, datetime):
+            self._log_safely(f"[DATABASE ERROR] timestamp_start_streaming trebuie să fie datetime, primit {type(timestamp_start_streaming)}: {timestamp_start_streaming}")
+            return False
+        
+        # Convertește datetime la naive
+        if isinstance(timestamp_start_streaming, datetime) and timestamp_start_streaming.tzinfo is not None:
+            timestamp_start_streaming = timestamp_start_streaming.replace(tzinfo=None)
         
         update_sql = """
         UPDATE chat_logs 
