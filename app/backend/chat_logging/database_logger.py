@@ -7,6 +7,7 @@ from dataclasses import asdict
 import json
 import time
 import sys
+import pytz
 from dotenv import load_dotenv
 
 # Import opțional pentru pyodbc
@@ -14,12 +15,10 @@ try:
     import pyodbc
     PYODBC_AVAILABLE = True
     print("🎉 [DATABASE SUCCESS] pyodbc v{} INSTALAT CU SUCCES! Database logging ACTIVAT! 🎉".format(pyodbc.version), file=sys.stdout)
-    print("✅ [DATABASE] Azure SQL Database connectivity: ENABLED", file=sys.stdout)
 except ImportError:
     pyodbc = None
     PYODBC_AVAILABLE = False
-    print("❌ [DATABASE ERROR] pyodbc NU ESTE INSTALAT! Database logging DEZACTIVAT!", file=sys.stderr)
-    print("💡 [DATABASE FIX] Pentru a activa database logging, adăugați 'pyodbc==5.2.0' în requirements.txt și redeploy", file=sys.stderr)
+    print("⚠️ [DATABASE WARNING] pyodbc nu este instalat. Database logging DEZACTIVAT.", file=sys.stdout)
 
 # Încarcă variabilele de mediu la nivel de modul
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), ".env")
@@ -36,6 +35,9 @@ class AzureSQLLogger:
     Funcționează independent de starea bazei de date - aplicația continuă
     să ruleze chiar dacă baza de date nu este disponibilă.
     """
+    
+    # Timezone pentru București (UTC+2/UTC+3 cu DST)
+    BUCHAREST_TZ = pytz.timezone('Europe/Bucharest')
     
     def __init__(self, enable_db_logging: bool = True):
         # Verifică dacă pyodbc este disponibil
@@ -64,6 +66,18 @@ class AzureSQLLogger:
         # Inițializarea bazei de date (creare tabelă dacă nu există)
         if self.enable_db_logging and self.connection_string:
             self._schedule_safe_task(self._initialize_database())
+    
+    @staticmethod
+    def get_bucharest_time():
+        """Returnează timestamp-ul curent pentru București"""
+        return datetime.now(AzureSQLLogger.BUCHAREST_TZ)
+
+    @staticmethod  
+    def ensure_bucharest_timezone(dt: datetime):
+        """Convertește datetime la timezone București"""
+        if dt.tzinfo is None:
+            return AzureSQLLogger.BUCHAREST_TZ.localize(dt)
+        return dt.astimezone(AzureSQLLogger.BUCHAREST_TZ)
     
     def _detect_odbc_driver(self) -> Optional[str]:
         """Detectează cel mai recent driver ODBC SQL Server disponibil"""
@@ -328,7 +342,7 @@ class AzureSQLLogger:
         Returnează True dacă operația a reușit, False altfel
         """
         if timestamp_start is None:
-            timestamp_start = datetime.now()
+            timestamp_start = self.get_bucharest_time()
         
         insert_sql = """
         INSERT INTO chat_logs (
@@ -371,7 +385,7 @@ class AzureSQLLogger:
         Returnează True dacă operația a reușit, False altfel
         """
         if timestamp_end is None:
-            timestamp_end = datetime.now()
+            timestamp_end = self.get_bucharest_time()
         
         update_sql = """
         UPDATE chat_logs 

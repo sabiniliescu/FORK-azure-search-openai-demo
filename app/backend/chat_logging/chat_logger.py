@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 from dataclasses import dataclass, asdict
 import asyncio
+import pytz
 from .database_logger import azure_sql_logger
 
 
@@ -32,9 +33,24 @@ class ChatLogEntry:
 class ChatLogger:
     """Logger pentru capturarea și salvarea informațiilor de chat"""
     
+    # Timezone pentru București (UTC+2/UTC+3 cu DST)
+    BUCHAREST_TZ = pytz.timezone('Europe/Bucharest')
+    
     def __init__(self, enable_logging: bool = True):
         self.enable_logging = enable_logging
         self.active_logs: Dict[str, ChatLogEntry] = {}  # Pentru tracking log-urile active
+    
+    @staticmethod
+    def get_bucharest_time():
+        """Returnează timestamp-ul curent pentru București"""
+        return datetime.now(ChatLogger.BUCHAREST_TZ)
+
+    @staticmethod  
+    def ensure_bucharest_timezone(dt: datetime):
+        """Convertește datetime la timezone București"""
+        if dt.tzinfo is None:
+            return ChatLogger.BUCHAREST_TZ.localize(dt)
+        return dt.astimezone(ChatLogger.BUCHAREST_TZ)
     
     def start_chat_log(
         self,
@@ -53,13 +69,19 @@ class ChatLogger:
         if not self.enable_logging:
             return
         
+        # Folosește timestamp-ul real dacă este disponibil, altfel folosește ora București
+        if timestamp_start is None:
+            timestamp_start = self.get_bucharest_time()
+        else:
+            timestamp_start = self.ensure_bucharest_timezone(timestamp_start)
+        
         log_entry = ChatLogEntry(
             question=question,
             answer="",  # Va fi completat la finish_chat_log
             user_id=user_id,
             conversation_id=conversation_id,
             extra_info_thoughts=extra_info_thoughts,
-            timestamp_start=timestamp_start or datetime.now(),  # Folosește timestamp-ul real dacă este disponibil
+            timestamp_start=timestamp_start,
             timestamp_end=None,
             model_used=model_used,
             temperature=temperature,
@@ -107,7 +129,7 @@ class ChatLogger:
         
         log_entry = self.active_logs[request_id]
         log_entry.answer = answer
-        log_entry.timestamp_end = datetime.now()
+        log_entry.timestamp_end = self.get_bucharest_time()
         log_entry.agentic_retrival_duration_seconds = agentic_retrival_duration_seconds
         
         # Actualizează token usage-ul final dacă este disponibil
@@ -150,7 +172,7 @@ class ChatLogger:
             return
         
         log_entry = self.active_logs[request_id]
-        log_entry.timestamp_start_streaming = datetime.now()
+        log_entry.timestamp_start_streaming = self.get_bucharest_time()
         
         # Log în terminal
         print(f"[DB LOG] 🚀 Streaming Start | ID: {request_id}")

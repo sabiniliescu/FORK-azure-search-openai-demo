@@ -453,6 +453,8 @@ wrapt==1.16.0
     #   opentelemetry-instrumentation-dbapi
     #   opentelemetry-instrumentation-httpx
     #   opentelemetry-instrumentation-urllib3
+pytz==2024.1
+    # via chat logging timezone support
 wsproto==1.2.0
     # via hypercorn
 yarl==1.17.2
