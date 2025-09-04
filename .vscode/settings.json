@@ -35,5 +35,6 @@
     "python.terminal.activateEnvironment": false,
     "python.terminal.activateEnvInCurrentTerminal": false,
     "terminal.integrated.defaultProfile.windows": "PowerShell",
-    "python.envFile": "${workspaceFolder}/.env"
+    "python.envFile": "${workspaceFolder}/.env",
+    "accessibility.signals.lineHasInlineSuggestion": { "sound": "off" }
 }

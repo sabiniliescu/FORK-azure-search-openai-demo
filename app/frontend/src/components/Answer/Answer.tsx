@@ -28,6 +28,9 @@ interface Props {
     showSpeechOutputAzure?: boolean;
     showFeedback?: boolean; // New prop to control feedback visibility
     showDeveloperFeatures?: boolean; // New prop to control developer features
+    requestId?: string; // ID-ul cererii pentru tracking feedback
+    sessionId?: string; // ID-ul sesiunii pentru tracking feedback
+    conversationId?: string; // ID-ul conversației pentru tracking feedback
 }
 
 export const Answer = ({
@@ -44,12 +47,25 @@ export const Answer = ({
     showSpeechOutputAzure,
     showSpeechOutputBrowser,
     showFeedback = true, // Default to true for backward compatibility
-    showDeveloperFeatures = false // Default to false for backward compatibility
+    showDeveloperFeatures = false, // Default to false for backward compatibility
+    requestId,
+    sessionId,
+    conversationId
 }: Props) => {
     const followupQuestions = answer.context?.followup_questions;
     const parsedAnswer = useMemo(() => parseAnswerToHtml(answer, isStreaming, onCitationClicked), [answer]);
     const { t } = useTranslation();
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
+
+    // Debug logging pentru tracking info
+    console.log("📋 Answer component received:", {
+        requestId,
+        sessionId,
+        conversationId,
+        answerTracking: answer.tracking,
+        answerObject: answer
+    });
+
     // Feedback state
     const [feedback, setFeedback] = useState<string | null>(null);
     const [writtenFeedback, setWrittenFeedback] = useState<string>("");
@@ -58,13 +74,20 @@ export const Answer = ({
     const [lastSubmittedFeedback, setLastSubmittedFeedback] = useState<string>("");
     const sendFeedback = (type: "like" | "dislike", text?: string) => {
         setFeedback(type);
+
+        // Folosim tracking info din answer.tracking în primul rând
+        const trackingInfo = answer.tracking || {};
+
         fetch("/api/feedback", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 answerIndex: index,
                 feedbackType: type,
-                feedbackText: text || null
+                feedbackText: text || null,
+                requestId: trackingInfo.request_id || requestId || "unknown",
+                sessionId: trackingInfo.session_id || sessionId || "unknown",
+                conversationId: trackingInfo.conversation_id || conversationId || "unknown"
             })
         })
             .then(() => {

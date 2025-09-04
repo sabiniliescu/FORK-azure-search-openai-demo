@@ -1,0 +1,1 @@
+azd deploy --debug > debug_log.txt

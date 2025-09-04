@@ -155,7 +155,8 @@ const Chat = () => {
                     answer += newContent;
                     const latestResponse: ChatAppResponse = {
                         ...askResponse,
-                        message: { content: answer, role: askResponse.message.role }
+                        message: { content: answer, role: askResponse.message.role },
+                        tracking: askResponse.tracking // Includem tracking info și în update-uri
                     };
                     setStreamedAnswers([...answers, [question, latestResponse]]);
                     resolve(null);
@@ -165,9 +166,25 @@ const Chat = () => {
         try {
             setIsStreaming(true);
             for await (const event of readNDJSONStream(responseBody)) {
+                console.log("🔄 Stream event:", event);
+                console.log("🔄 Event keys:", Object.keys(event));
+
+                // Verificăm tracking în primul rând, indiferent de alte proprietăți
+                if (event["tracking"]) {
+                    askResponse.tracking = event["tracking"];
+                    console.log("✅ Tracking captured:", event["tracking"]);
+                }
+
                 if (event["context"] && event["context"]["data_points"]) {
                     event["message"] = event["delta"];
+                    // IMPORTANT: Păstrăm tracking info înainte de suprascrierea askResponse
+                    const preservedTracking = askResponse.tracking;
                     askResponse = event as ChatAppResponse;
+                    // Restaurăm tracking info
+                    if (preservedTracking) {
+                        askResponse.tracking = preservedTracking;
+                        console.log("🔄 Preserving tracking in askResponse:", askResponse.tracking);
+                    }
                 } else if (event["delta"] && event["delta"]["content"]) {
                     setIsLoading(false);
                     await updateState(event["delta"]["content"]);
@@ -183,8 +200,10 @@ const Chat = () => {
         }
         const fullResponse: ChatAppResponse = {
             ...askResponse,
-            message: { content: answer, role: askResponse.message.role }
+            message: { content: answer, role: askResponse.message.role },
+            tracking: askResponse.tracking // Păstrăm tracking info
         };
+        console.log("🎯 Full response with tracking:", fullResponse.tracking);
         return fullResponse;
     };
 
@@ -257,6 +276,7 @@ const Chat = () => {
             }
             if (shouldStream) {
                 const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, response.body);
+                console.log("💾 Setting answer with tracking:", parsedResponse.tracking);
                 setAnswers([...answers, [question, parsedResponse]]);
                 if (typeof parsedResponse.session_state === "string" && parsedResponse.session_state !== "") {
                     const token = client ? await getToken(client) : undefined;
@@ -453,6 +473,12 @@ const Chat = () => {
                                                 showSpeechOutputBrowser={showSpeechOutputBrowser}
                                                 showFeedback={!isHistoryChat}
                                                 showDeveloperFeatures={showDeveloperFeatures}
+                                                requestId={(() => {
+                                                    console.log("Passing tracking to streaming Answer:", streamedAnswer[1].tracking);
+                                                    return streamedAnswer[1].tracking?.request_id;
+                                                })()}
+                                                sessionId={streamedAnswer[1].tracking?.session_id}
+                                                conversationId={streamedAnswer[1].tracking?.conversation_id}
                                             />
                                         </div>
                                     </div>
@@ -478,6 +504,12 @@ const Chat = () => {
                                                 showSpeechOutputBrowser={showSpeechOutputBrowser}
                                                 showFeedback={!isHistoryChat}
                                                 showDeveloperFeatures={showDeveloperFeatures}
+                                                requestId={(() => {
+                                                    console.log("Passing tracking to Answer:", answer[1].tracking);
+                                                    return answer[1].tracking?.request_id;
+                                                })()}
+                                                sessionId={answer[1].tracking?.session_id}
+                                                conversationId={answer[1].tracking?.conversation_id}
                                             />
                                         </div>
                                     </div>

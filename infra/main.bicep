@@ -278,6 +278,17 @@ param useLocalHtmlParser bool = false
 @description('Use AI project')
 param useAiProject bool = false
 
+// Azure SQL Database parameters for chat logging
+@description('Azure SQL Server name for chat logging')
+param azureSqlServer string = 'mihaiweb.database.windows.net'
+@description('Azure SQL Database name for chat logging')
+param azureSqlDatabase string = 'MihAI_Web_logs'
+@description('Azure SQL Username for chat logging')
+param azureSqlUsername string = 'mihaiuser'
+@description('Azure SQL Password for chat logging')
+@secure()
+param azureSqlPassword string = ''
+
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
@@ -462,6 +473,11 @@ var appEnvVariables = {
   ALLOWED_ORIGIN: join(allowedOrigins, ';')
   USE_VECTORS: useVectors
   USE_GPT4V: useGPT4V
+  // Azure SQL Database for chat logging
+  AZURE_SQL_SERVER: azureSqlServer
+  AZURE_SQL_DATABASE: azureSqlDatabase
+  AZURE_SQL_USERNAME: azureSqlUsername
+  AZURE_SQL_PASSWORD: azureSqlPassword
   USE_USER_UPLOAD: useUserUpload
   AZURE_USERSTORAGE_ACCOUNT: useUserUpload ? userStorage.outputs.name : ''
   AZURE_USERSTORAGE_CONTAINER: useUserUpload ? userStorageContainerName : ''
@@ -551,9 +567,9 @@ module acaBackend 'core/host/container-app-upsert.bicep' = if (deploymentTarget 
     identityType: 'UserAssigned'
     tags: union(tags, { 'azd-service-name': 'backend' })
     targetPort: 8000
-    containerCpuCoreCount: '2.0'
-    containerMemory: '4Gi'
-    containerMinReplicas: 1
+    containerCpuCoreCount: '1.0'
+    containerMemory: '2Gi'
+    containerMinReplicas: 0
     allowedOrigins: allowedOrigins
     env: union(appEnvVariables, {
       // For using managed identity to access Azure resources. See https://github.com/microsoft/azure-container-apps/issues/442
