@@ -3,6 +3,7 @@ from typing import Any, Optional, Union, cast
 import time
 import sys
 from datetime import datetime
+import pytz
 
 from azure.search.documents.agent.aio import KnowledgeAgentRetrievalClient
 from azure.search.documents.aio import SearchClient
@@ -22,6 +23,9 @@ from core.authentication import AuthenticationHelper
 
 
 class ChatReadRetrieveReadApproach(ChatApproach):
+    # Timezone pentru București (UTC+2/UTC+3 cu DST)
+    BUCHAREST_TZ = pytz.timezone('Europe/Bucharest')
+    
     def print_feedback(self, feedback_data: dict[str, Any]):
         action = feedback_data.get('feedbackType')
         text = feedback_data.get('feedbackText')
@@ -30,8 +34,12 @@ class ChatReadRetrieveReadApproach(ChatApproach):
             print(f"[FEEDBACK] Text: {text}")
 
     def _get_timestamp(self):
-        """Get current timestamp in HH:MM:SS format"""
-        return datetime.now().strftime("%H:%M:%S")
+        """Get current timestamp in HH:MM:SS format using Bucharest timezone"""
+        return datetime.now(self.BUCHAREST_TZ).strftime("%H:%M:%S")
+
+    def _get_bucharest_time(self):
+        """Get current datetime in Bucharest timezone"""
+        return datetime.now(self.BUCHAREST_TZ)
 
     def _log_timing(self, message: str, duration_s: float = None):
         """Log timing information with timestamp"""
@@ -153,9 +161,8 @@ class ChatReadRetrieveReadApproach(ChatApproach):
         
         use_agentic_retrieval = True if overrides.get("use_agentic_retrieval") else False
         
-        # Capturează timestamp-ul real de start pentru logging
-        from datetime import datetime
-        real_start_time = datetime.now()
+        # Capturează timestamp-ul real de start pentru logging în timezone București
+        real_start_time = self._get_bucharest_time()
         
         self._log_timing(f"run_until_final_call: start use_agentic_retrieval={use_agentic_retrieval}")
         
