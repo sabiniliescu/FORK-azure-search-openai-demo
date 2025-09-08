@@ -38,16 +38,58 @@
     "chatEmptyStateSubtitle": "Întreabă-mă orice sau încearcă unul dintre exemplele de mai jos pentru a începe",
     "defaultExamples": {
         "1": "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+        "1Variants": [
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay"
+        ],
         "2": "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+        "2Variants": [
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?"
+        ],
         "3": "Îmi doresc să promovez în carieră, cum pot face asta?",
-        "placeholder": "Adreseaza-mi o intrebare despre documentele Libra"
+        "3Variants": [
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?"
+        ],
+        "placeholder": "Adresează-mi o întrebare despre documentele Libra"
     },
     "askTitle": "Ask your data",
     "gpt4vExamples": {
         "1": "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+        "1Variants": [
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay"
+        ],
         "2": "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+        "2Variants": [
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?"
+        ],
         "3": "Îmi doresc să promovez în carieră, cum pot face asta?",
-        "placeholder": "Adreseaza-mi o intrebare despre documentele Libra"
+        "3Variants": [
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?"
+        ],
+        "placeholder": "Adresează-mi o întrebare despre documentele Libra"
     },
     "generatingAnswer": "Răsfoiesc documentele Libra pentru a găsi răspunsul...",
     "citationWithColon": "Citat:",
