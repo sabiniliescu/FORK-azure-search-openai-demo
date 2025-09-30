@@ -461,6 +461,7 @@ const Chat = () => {
                                                 isStreaming={true}
                                                 key={index}
                                                 answer={streamedAnswer[1]}
+                                                question={streamedAnswer[0]}
                                                 index={index}
                                                 speechConfig={speechConfig}
                                                 isSelected={false}
@@ -492,6 +493,7 @@ const Chat = () => {
                                                 isStreaming={false}
                                                 key={index}
                                                 answer={answer[1]}
+                                                question={answer[0]}
                                                 index={index}
                                                 speechConfig={speechConfig}
                                                 isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
