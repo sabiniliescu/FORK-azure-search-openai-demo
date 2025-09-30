@@ -105,7 +105,8 @@
         "info": "Informații",
         "save": "Salvează",
         "copy": "Copiază",
-        "copied": "Copiat!"
+        "copied": "Copiat!",
+        "exportPDF": "Exportă în PDF"
     },
 
     "headerTexts":{

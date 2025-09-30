@@ -12,9 +12,11 @@ import { parseAnswerToHtml } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
 import { SpeechOutputBrowser } from "./SpeechOutputBrowser";
 import { SpeechOutputAzure } from "./SpeechOutputAzure";
+import { exportToPDF } from "../../utils/pdfExport";
 
 interface Props {
     answer: ChatAppResponse;
+    question?: string; // Add question prop for PDF export
     index: number;
     speechConfig: SpeechConfig;
     isSelected?: boolean;
@@ -35,6 +37,7 @@ interface Props {
 
 export const Answer = ({
     answer,
+    question,
     index,
     speechConfig,
     isSelected,
@@ -117,6 +120,17 @@ export const Answer = ({
                 setTimeout(() => setCopied(false), 2000);
             })
             .catch(err => console.error("Failed to copy text: ", err));
+    };
+
+    const handlePDFExport = () => {
+        if (!question) {
+            console.warn("Question not available for PDF export");
+            return;
+        }
+        
+        // Use the same clean text logic as the copy function
+        const cleanAnswer = sanitizedAnswerHtml.replace(/<a [^>]*><sup>\d+<\/sup><\/a>|<[^>]+>/g, "");
+        exportToPDF(question, cleanAnswer);
     };
 
     return (
@@ -213,6 +227,14 @@ export const Answer = ({
                                 title={copied ? t("tooltips.copied") : t("tooltips.copy")}
                                 ariaLabel={copied ? t("tooltips.copied") : t("tooltips.copy")}
                                 onClick={handleCopy}
+                            />
+                            <IconButton
+                                style={{ color: "black" }}
+                                iconProps={{ iconName: "Download" }}
+                                title={t("tooltips.exportPDF")}
+                                ariaLabel={t("tooltips.exportPDF")}
+                                onClick={handlePDFExport}
+                                disabled={!question}
                             />
                             {showFeedback && (
                                 <>
