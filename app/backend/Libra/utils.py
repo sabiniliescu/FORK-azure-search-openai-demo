@@ -2,7 +2,7 @@ from azure.storage.blob import generate_blob_sas, BlobSasPermissions, ContentSet
 from datetime import datetime, timedelta
 import os
 
-AZURE_STORAGE_CONNECTION="DefaultEndpointsProtocol=https;AccountName=mihairagstorageaccount;AccountKey=vDnQhWZGnKejiIxjGHDszTQhtvtGvp3xvToT4R9dyCi4w8T0RI+vTsT4UzCfyA50uHqN++htVwCI+AStEAO/Cw==;EndpointSuffix=core.windows.net"
+AZURE_STORAGE_CONNECTION=os.getenv("STORAGE_KEY")
 
 CHUNK_STORAGE_CONTAINER_NAME="prod-mihai-container"
 
