@@ -230,7 +230,7 @@ export const Answer = ({
                             />
                             <IconButton
                                 style={{ color: "black" }}
-                                iconProps={{ iconName: "PageAdd" }}
+                                iconProps={{ iconName: "Download" }}
                                 title={t("tooltips.exportPDF")}
                                 ariaLabel={t("tooltips.exportPDF")}
                                 onClick={handlePDFExport}

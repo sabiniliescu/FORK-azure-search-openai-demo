@@ -63,7 +63,8 @@
         "info": "Info",
         "save": "Save",
         "copy": "Copy",
-        "copied": "Copied!"
+        "copied": "Copied!",
+        "exportPDF": "Exportar a PDF"
     },
 
     "headerTexts":{
