@@ -97,6 +97,7 @@
 
     "tooltips": {
         "submitQuestion": "Trimite",
+        "stopStreaming": "Oprește",
         "askWithVoice": "Întreabă cu vocea",
         "stopRecording": "Oprește înregistrarea întrebării",
         "showThoughtProcess": "Arată procesul de gândire",

@@ -69,6 +69,7 @@ const Chat = () => {
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isStreaming, setIsStreaming] = useState<boolean>(false);
+    const [streamAbortController, setStreamAbortController] = useState<AbortController | null>(null);
     const [error, setError] = useState<unknown>();
 
     const [activeCitation, setActiveCitation] = useState<string>();
@@ -145,7 +146,12 @@ const Chat = () => {
         });
     };
 
-    const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], responseBody: ReadableStream<any>) => {
+    const handleAsyncRequest = async (
+        question: string,
+        answers: [string, ChatAppResponse][],
+        responseBody: ReadableStream<any>,
+        abortController: AbortController
+    ) => {
         let answer: string = "";
         let askResponse: ChatAppResponse = {} as ChatAppResponse;
 
@@ -166,7 +172,13 @@ const Chat = () => {
         try {
             setIsStreaming(true);
             for await (const event of readNDJSONStream(responseBody)) {
-                console.log("🔄 Stream event:", event);
+                // Verifică dacă streaming-ul a fost oprit
+                if (abortController.signal.aborted) {
+                    console.log("� Streaming oprit de utilizator");
+                    break;
+                }
+
+                console.log("�🔄 Stream event:", event);
                 console.log("🔄 Event keys:", Object.keys(event));
 
                 // Verificăm tracking în primul rând, indiferent de alte proprietăți
@@ -197,6 +209,7 @@ const Chat = () => {
             }
         } finally {
             setIsStreaming(false);
+            setStreamAbortController(null);
         }
         const fullResponse: ChatAppResponse = {
             ...askResponse,
@@ -205,6 +218,13 @@ const Chat = () => {
         };
         console.log("🎯 Full response with tracking:", fullResponse.tracking);
         return fullResponse;
+    };
+
+    const stopStreaming = () => {
+        if (streamAbortController) {
+            streamAbortController.abort();
+            console.log("🛑 Oprind streaming-ul...");
+        }
     };
 
     const client = useLogin ? useMsal().instance : undefined;
@@ -267,7 +287,13 @@ const Chat = () => {
                 session_state: answers.length ? answers[answers.length - 1][1].session_state : null
             };
 
-            const response = await chatApi(request, shouldStream, token);
+            // Creăm un nou AbortController pentru această cerere
+            const abortController = new AbortController();
+            if (shouldStream) {
+                setStreamAbortController(abortController);
+            }
+
+            const response = await chatApi(request, shouldStream, token, abortController);
             if (!response.body) {
                 throw Error("No response body");
             }
@@ -275,7 +301,7 @@ const Chat = () => {
                 throw Error(`Request failed with status ${response.status}`);
             }
             if (shouldStream) {
-                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, response.body);
+                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, response.body, abortController);
                 console.log("💾 Setting answer with tracking:", parsedResponse.tracking);
                 setAnswers([...answers, [question, parsedResponse]]);
                 if (typeof parsedResponse.session_state === "string" && parsedResponse.session_state !== "") {
@@ -298,6 +324,7 @@ const Chat = () => {
             setError(e);
         } finally {
             setIsLoading(false);
+            setStreamAbortController(null);
         }
     };
 
@@ -541,6 +568,8 @@ const Chat = () => {
                             disabled={isLoading}
                             onSend={question => makeApiRequest(question)}
                             showSpeechInput={showSpeechInput}
+                            isStreaming={isStreaming}
+                            onStopStreaming={stopStreaming}
                         />
                     </div>
                 </div>
