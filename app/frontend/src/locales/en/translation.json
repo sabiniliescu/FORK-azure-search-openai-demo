@@ -218,5 +218,10 @@
         "useOidSecurityFilter": "Filter search results based on the authenticated user's OID.",
         "useGroupsSecurityFilter": "Filter search results based on the authenticated user's groups.",
         "useAgenticRetrieval": "Use agentic retrieval from Azure AI Search for multi-query planning. Always uses semantic ranker."
+    },
+
+    "errors": {
+        "abortError": "Oprit",
+        "retryButton": "Retrimite"
     }
 }
