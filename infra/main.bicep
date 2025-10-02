@@ -289,6 +289,9 @@ param azureSqlUsername string = 'mihaiuser'
 @secure()
 param azureSqlPassword string = ''
 
+@description('Storage key for additional storage access')
+param storageKey string = ''
+
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
@@ -478,6 +481,7 @@ var appEnvVariables = {
   AZURE_SQL_DATABASE: azureSqlDatabase
   AZURE_SQL_USERNAME: azureSqlUsername
   AZURE_SQL_PASSWORD: azureSqlPassword
+  STORAGE_KEY: storageKey
   USE_USER_UPLOAD: useUserUpload
   AZURE_USERSTORAGE_ACCOUNT: useUserUpload ? userStorage.outputs.name : ''
   AZURE_USERSTORAGE_CONTAINER: useUserUpload ? userStorageContainerName : ''

@@ -352,6 +352,9 @@
     },
     "useAgenticRetrieval": {
       "value": "${USE_AGENTIC_RETRIEVAL=false}"
+    },
+    "storageKey": {
+      "value": "${STORAGE_KEY}"
     }
   }
 }
