@@ -110,6 +110,7 @@ const Chat = () => {
 
     const getConfig = async () => {
         configApi().then(config => {
+            console.log("📋 Configurație încărcată:", config);
             setShowGPT4VOptions(config.showGPT4VOptions);
             if (config.showGPT4VOptions) {
                 setUseGPT4V(true);
@@ -242,6 +243,7 @@ const Chat = () => {
 
         error && setError(undefined);
         setIsLoading(true);
+        console.log("🚀 Începem procesarea cererii, isLoading=true");
         setActiveCitation(undefined);
         setActiveAnalysisPanelTab(undefined);
         setIsHistoryChat(false); // Reset history chat flag for new conversations
@@ -289,9 +291,9 @@ const Chat = () => {
 
             // Creăm un nou AbortController pentru această cerere
             const abortController = new AbortController();
-            if (shouldStream) {
-                setStreamAbortController(abortController);
-            }
+            // Setăm streamAbortController pentru a activa butonul STOP
+            setStreamAbortController(abortController);
+            console.log("🎯 AbortController setat, shouldStream:", shouldStream);
 
             const response = await chatApi(request, shouldStream, token, abortController);
             if (!response.body) {
@@ -321,10 +323,17 @@ const Chat = () => {
             }
             setSpeechUrls([...speechUrls, null]);
         } catch (e) {
-            setError(e);
+            // Verificăm dacă eroarea este din cauza abort-ului
+            if (e instanceof Error && (e.name === "AbortError" || e.message.includes("aborted"))) {
+                console.log("⏹️ Request oprit de utilizator");
+                setError("Oprit");
+            } else {
+                setError(e);
+            }
         } finally {
             setIsLoading(false);
             setStreamAbortController(null);
+            console.log("🏁 Request finalizat, resetăm AbortController");
         }
     };
 
@@ -568,7 +577,7 @@ const Chat = () => {
                             disabled={isLoading}
                             onSend={question => makeApiRequest(question)}
                             showSpeechInput={showSpeechInput}
-                            isStreaming={isStreaming}
+                            isStreaming={isStreaming || (isLoading && streamAbortController !== null)}
                             onStopStreaming={stopStreaming}
                         />
                     </div>
