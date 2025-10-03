@@ -47,17 +47,48 @@ class TeamsBot(ActivityHandler):
             # Get conversation history for this user
             history = self.conversation_history.get(conversation_id, [])
 
-            # Call backend chat API
+            # Call backend chat API with exact same defaults as frontend (Chat.tsx)
             response = await self.backend_client.chat(
                 message=user_message,
                 history=history,
                 context={
                     "overrides": {
-                        "temperature": 0.7,
-                        "top": 3,
-                        "retrieval_mode": "hybrid",
-                        "semantic_ranker": True,
-                        "semantic_captions": True,
+                        # Core search parameters
+                        "retrieval_mode": "hybrid",              # RetrievalMode.Hybrid
+                        "semantic_ranker": True,                 # useSemanticRanker = true
+                        "semantic_captions": False,              # useSemanticCaptions = false
+                        "top": 10,                                # retrieveCount = 3
+                        
+                        # LLM parameters
+                        "temperature": 0.3,                      # temperature = 0.3
+                        "seed": None,                            # seed = null
+                        
+                        # Scoring thresholds
+                        "minimum_reranker_score": 0,             # minimumRerankerScore = 0
+                        "minimum_search_score": 0,               # minimumSearchScore = 0
+                        
+                        # Advanced search
+                        "max_subquery_count": 10,                # maxSubqueryCount = 10
+                        "results_merge_strategy": "interleaved", # resultsMergeStrategy
+                        "use_query_rewriting": False,            # useQueryRewriting = false
+                        
+                        # Prompt customization
+                        "prompt_template": "",                   # promptTemplate = ""
+                        "exclude_category": "",                  # excludeCategory = ""
+                        "include_category": "",                  # includeCategory = ""
+                        
+                        # Features
+                        "suggest_followup_questions": False,     # useSuggestFollowupQuestions = false
+                        "use_oid_security_filter": False,        # useOidSecurityFilter = false
+                        "use_groups_security_filter": False,     # useGroupsSecurityFilter = false
+                        
+                        # Vector & Vision
+                        "vector_fields": ["embedding", "imageEmbedding"], # VectorFields.TextAndImageEmbeddings
+                        "use_gpt4v": False,                      # useGPT4V = false
+                        "gpt4v_input": "textAndImages",          # GPT4VInput.TextAndImages
+                        
+                        # Agentic retrieval
+                        "use_agentic_retrieval": True           # useAgenticRetrieval = false
                     }
                 }
             )
@@ -134,25 +165,34 @@ class TeamsBot(ActivityHandler):
         
         # Get context data
         context_data = response.get("context", {})
-        data_points = context_data.get("data_points", {})
-        thoughts = context_data.get("thoughts", "")
+        thoughts = context_data.get("thoughts", [])
 
         # Build formatted response
         formatted = f"{answer}\n\n"
 
-        # Add citations if available (data_points contains the source documents)
-        if data_points and isinstance(data_points, dict):
-            text_sources = data_points.get("text", [])
-            if text_sources:
-                formatted += "📚 **Surse:**\n"
-                for i, source in enumerate(text_sources[:5], 1):  # Max 5 sources
-                    if isinstance(source, str):
-                        # Simple string source
-                        formatted += f"{i}. {source}\n"
-                    elif isinstance(source, dict):
-                        # Dict with title/url
-                        title = source.get("title", source.get("name", "Document"))
-                        formatted += f"{i}. {title}\n"
+        # Extract agentic retrieval subqueries from thoughts
+        # query_plan = None
+        # if thoughts and isinstance(thoughts, list):
+        #     for thought in thoughts:
+        #         if isinstance(thought, dict) and thought.get("title", "").startswith("Agentic retrieval results"):
+        #             props = thought.get("props", {})
+        #             query_plan = props.get("query_plan", None)
+        #             break
+
+        # # Add subqueries if agentic retrieval was used
+        # if query_plan and isinstance(query_plan, list):
+        #     # Filter only AzureSearchQuery steps
+        #     search_queries = [
+        #         step for step in query_plan 
+        #         if isinstance(step, dict) and step.get("type") == "AzureSearchQuery"
+        #     ]
+            
+        #     if search_queries:
+        #         formatted += "🔍 **Subquery-uri generate:**\n"
+        #         for i, query_step in enumerate(search_queries, 1):
+        #             query_text = query_step.get("query", {}).get("search", "N/A")
+        #             result_count = query_step.get("count", 0)
+        #             formatted += f"{i}. \"{query_text}\" ({result_count} rezultate)\n"
 
         return formatted.strip()
 
