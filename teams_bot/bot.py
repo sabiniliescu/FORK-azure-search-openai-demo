@@ -149,6 +149,57 @@ class TeamsBot(ActivityHandler):
         
         return await super().on_conversation_update_activity(turn_context)
 
+    def _clean_html_for_teams(self, text: str) -> str:
+        """
+        Clean HTML formatting for Teams display
+        Converts superscript tags and other HTML to Teams-compatible format
+        
+        Args:
+            text: Text with HTML tags
+            
+        Returns:
+            Cleaned text for Teams
+        """
+        import re
+        
+        # Map pentru caractere superscript Unicode (originale)
+        superscript_map = {
+            '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+            '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+            '+': '⁺', '-': '⁻', '=': '⁼', '(': '⁽', ')': '⁾',
+            '/': '⸍', ';': ';', ',': ',', ' ': ' '
+        }
+        
+        # Convertește <sup>X</sup> în caractere Unicode superscript cu bold
+        def replace_superscript(match):
+            content = match.group(1).strip()
+            result = ''
+            # Încearcă să convertești fiecare caracter
+            for char in content:
+                if char in superscript_map:
+                    result += superscript_map[char]
+                else:
+                    # Pentru caractere ne-suportate, folosește original
+                    result += char
+            # Întoarce cu bold pentru a evidenția (face numerele să pară mai mari)
+            return f"**{result}**" if result else content
+        
+        # Replace <sup>...</sup> cu Unicode superscript
+        text = re.sub(r'<sup>(.*?)</sup>', replace_superscript, text, flags=re.DOTALL)
+        
+        # Curăță alte tag-uri HTML comune
+        text = re.sub(r'<strong>(.*?)</strong>', r'**\1**', text)
+        text = re.sub(r'<b>(.*?)</b>', r'**\1**', text)
+        text = re.sub(r'<em>(.*?)</em>', r'*\1*', text)
+        text = re.sub(r'<i>(.*?)</i>', r'*\1*', text)
+        text = re.sub(r'<br\s*/?>', '\n', text)
+        text = re.sub(r'</?p>', '\n', text)
+        
+        # Elimină orice alte tag-uri HTML rămase
+        text = re.sub(r'<[^>]+>', '', text)
+        
+        return text
+
     def _format_response(self, response: dict) -> str:
         """
         Format the backend response for Teams display
@@ -163,14 +214,17 @@ class TeamsBot(ActivityHandler):
         message_obj = response.get("message", {})
         answer = message_obj.get("content", "Scuze, nu am primit un răspuns.")
         
+        # Clean HTML tags for Teams display
+        answer_clean = self._clean_html_for_teams(answer)
+        
         # Get context data
         context_data = response.get("context", {})
         thoughts = context_data.get("thoughts", [])
 
         # Build formatted response
-        formatted = f"{answer}\n\n"
+        formatted = f"{answer_clean}\n\n"
 
-        # Extract agentic retrieval subqueries from thoughts
+        # Extract agentic retrieval subqueries from thoughts (COMMENTED OUT - uncomment to show subqueries)
         # query_plan = None
         # if thoughts and isinstance(thoughts, list):
         #     for thought in thoughts:
