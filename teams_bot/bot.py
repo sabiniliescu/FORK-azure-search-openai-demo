@@ -214,11 +214,25 @@ class TeamsBot(ActivityHandler):
         message_obj = response.get("message", {})
         answer = message_obj.get("content", "Scuze, nu am primit un răspuns.")
         
+        # Get context data
+        context_data = response.get("context", {})
+        link_mapping = context_data.get("link_mapping", {})
+        
+        # Replace link IDs (link1, link2, etc.) with actual URLs
+        # This matches the frontend behavior in AnswerParser.tsx
+        if link_mapping:
+            import re
+            # Replace markdown links that use link IDs: [text](linkX) -> [text](actual_url)
+            answer = re.sub(
+                r'\[([^\]]+)\]\((link\d+)\)',
+                lambda match: f"[{match.group(1)}]({link_mapping.get(match.group(2), match.group(2))})",
+                answer
+            )
+        
         # Clean HTML tags for Teams display
         answer_clean = self._clean_html_for_teams(answer)
         
-        # Get context data
-        context_data = response.get("context", {})
+        # Get thoughts from context
         thoughts = context_data.get("thoughts", [])
 
         # Build formatted response
