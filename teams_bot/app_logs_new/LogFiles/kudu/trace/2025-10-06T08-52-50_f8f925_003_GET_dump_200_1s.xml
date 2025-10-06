@@ -1,0 +1,4 @@
+<step title="Incoming Request" date="2025-10-06T08:52:50.595" instance="f8f925" url="/dump" method="GET" type="request" pid="770,1,15" Host="teamsbot-mihai-mi.scm.azurewebsites.net" User-Agent="AZURECLI/2.65.0 (MSI)" Accept-Encoding="identity" Authorization="Bas..." x-ms-client-request-id="d338b57c-a291-11f0-ba08-f0a6549f27e0" X-ARR-LOG-ID="d338b57c-a291-11f0-ba08-f0a6549f27e0" CLIENT-IP="193.194.0.20:63224" X-SITE-DEPLOYMENT-ID="teamsbot-mihai-mi" WAS-DEFAULT-HOSTNAME="teamsbot-mihai-mi.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/dump" X-Client-IP="193.194.0.20" X-Client-Port="63224" >
+  <step title="Cleanup Xml Logs" date="2025-10-06T08:52:50.601" /><!-- duration: 14ms -->
+  <step title="Outgoing response" date="2025-10-06T08:52:51.432" type="response" statusCode="200" statusText="OK" /><!-- duration: 9ms -->
+</step><!-- duration: 847ms -->

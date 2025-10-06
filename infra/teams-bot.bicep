@@ -1,4 +1,5 @@
 // Bicep file for deploying Teams Bot resources to Azure
+// This deployment requires manual App Registration creation
 
 @description('Location for all resources')
 param location string = resourceGroup().location
@@ -12,11 +13,10 @@ param appServicePlanName string
 @description('Name of the Web App')
 param webAppName string
 
-@description('Microsoft App ID for the bot')
-@secure()
+@description('Microsoft App ID (from manual App Registration)')
 param microsoftAppId string
 
-@description('Microsoft App Password for the bot')
+@description('Microsoft App Password (client secret from App Registration)')
 @secure()
 param microsoftAppPassword string
 
@@ -65,7 +65,7 @@ resource webApp 'Microsoft.Web/sites@2022-03-01' = {
         }
         {
           name: 'PORT'
-          value: '3978'
+          value: '8000'
         }
         {
           name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
@@ -73,7 +73,11 @@ resource webApp 'Microsoft.Web/sites@2022-03-01' = {
         }
         {
           name: 'WEBSITES_PORT'
-          value: '3978'
+          value: '8000'
+        }
+        {
+          name: 'ENABLE_ORYX_BUILD'
+          value: 'true'
         }
       ]
       alwaysOn: true
@@ -90,15 +94,12 @@ resource botService 'Microsoft.BotService/botServices@2022-09-15' = {
   location: 'global'
   kind: 'azurebot'
   sku: {
-    name: 'F0' // Free tier, change to 'S1' for standard
+    name: 'F0' // Free tier
   }
   properties: {
     displayName: botName
     endpoint: 'https://${webApp.properties.defaultHostName}/api/messages'
     msaAppId: microsoftAppId
-    developerAppInsightKey: ''
-    developerAppInsightsApiKey: ''
-    developerAppInsightsApplicationId: ''
   }
 }
 

@@ -25,34 +25,78 @@ logger = logging.getLogger(__name__)
 # Load configuration from environment variables
 APP_ID = os.environ.get("MICROSOFT_APP_ID", "")
 APP_PASSWORD = os.environ.get("MICROSOFT_APP_PASSWORD", "")
+APP_TYPE = os.environ.get("MICROSOFT_APP_TYPE", "")  # Can be "UserAssignedMSI"
+APP_TENANTID = os.environ.get("MICROSOFT_APP_TENANTID", "")
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:50505")
-PORT = int(os.environ.get("PORT", 3978))
+PORT = int(os.environ.get("PORT", 8000))
 
-# Create adapter
-SETTINGS = BotFrameworkAdapterSettings(APP_ID, APP_PASSWORD)
-ADAPTER = BotFrameworkAdapter(SETTINGS)
+# Global adapter and bot instances (initialized in create_app)
+ADAPTER = None
+BOT = None
 
 
-# Catch-all for errors
-async def on_error(context, error):
+def init_bot():
     """
-    Global error handler for the bot
+    Initialize the Bot Framework adapter and bot instance
+    Uses Managed Identity if APP_TYPE is UserAssignedMSI
     
-    Args:
-        context: Turn context
-        error: Exception that occurred
+    Returns:
+        Tuple of (adapter, bot)
     """
-    logger.error(f"Error: {error}", exc_info=True)
-    try:
-        await context.send_activity(f"Ne pare rău, a apărut o eroare: {str(error)}")
-    except:
-        logger.error("Failed to send error message to user")
-
-
-ADAPTER.on_turn_error = on_error
-
-# Create the bot
-BOT = TeamsBot(BACKEND_URL)
+    global ADAPTER, BOT
+    
+    # Check if using Managed Identity
+    if APP_TYPE == "UserAssignedMSI":
+        logger.info(f"🔐 Configuring bot with Managed Identity")
+        logger.info(f"🔐 App ID: {APP_ID}")
+        if APP_TENANTID:
+            logger.info(f"🔐 Tenant ID: {APP_TENANTID}")
+        
+        # Import custom Managed Identity adapter
+        from managed_identity_adapter import ManagedIdentityBotAdapter
+        
+        # Create adapter with Managed Identity
+        adapter = ManagedIdentityBotAdapter(
+            app_id=APP_ID,
+            tenant_id=APP_TENANTID if APP_TENANTID else None
+        )
+        
+        logger.info("✅ Bot adapter configured with Managed Identity")
+    else:
+        # Standard authentication with app password
+        logger.info(f"🔐 Configuring bot with standard authentication")
+        logger.info(f"🔐 App ID: {APP_ID}")
+        
+        settings = BotFrameworkAdapterSettings(
+            app_id=APP_ID,
+            app_password=APP_PASSWORD if APP_PASSWORD else ""
+        )
+        adapter = BotFrameworkAdapter(settings)
+    
+    # Catch-all for errors
+    async def on_error(context, error):
+        """
+        Global error handler for the bot
+        
+        Args:
+            context: Turn context
+            error: Exception that occurred
+        """
+        logger.error(f"Error: {error}", exc_info=True)
+        try:
+            await context.send_activity(f"Ne pare rău, a apărut o eroare: {str(error)}")
+        except:
+            logger.error("Failed to send error message to user")
+    
+    adapter.on_turn_error = on_error
+    
+    # Create the bot
+    bot = TeamsBot(BACKEND_URL)
+    
+    ADAPTER = adapter
+    BOT = bot
+    
+    return adapter, bot
 
 
 # Listen for incoming requests
@@ -77,10 +121,12 @@ async def messages(req: Request) -> Response:
         activity = Activity().deserialize(body)
         auth_header = req.headers.get("Authorization", "")
 
-        response = await ADAPTER.process_activity(activity, auth_header, BOT.on_turn)
+        # For local testing without Bot Service, collect responses and return them
+        # This allows testing without a deployed Bot Framework Connector
+        invoke_response = await ADAPTER.process_activity(activity, auth_header, BOT.on_turn)
         
-        if response:
-            return Response(status=response.status, text=response.body)
+        if invoke_response:
+            return Response(status=invoke_response.status, body=invoke_response.body, content_type="application/json")
         return Response(status=200)
         
     except Exception as exception:
@@ -106,6 +152,15 @@ async def health_check(req: Request) -> Response:
     )
 
 
+async def home(req: Request) -> Response:
+    """Simple landing endpoint for root path."""
+    return Response(
+        status=200,
+        text='{"status": "ok", "service": "teams-bot"}',
+        content_type="application/json"
+    )
+
+
 # Create and configure the app
 def create_app() -> web.Application:
     """
@@ -114,10 +169,18 @@ def create_app() -> web.Application:
     Returns:
         Configured web application
     """
+    # Initialize bot adapter and bot instance
+    init_bot()
+    
     app = web.Application(middlewares=[aiohttp_error_middleware])
+    app.router.add_get("/", home)
     app.router.add_post("/api/messages", messages)
     app.router.add_get("/health", health_check)
     return app
+
+
+# Create app instance for Azure App Service (Gunicorn needs this)
+app = create_app()
 
 
 if __name__ == "__main__":
@@ -134,11 +197,12 @@ if __name__ == "__main__":
     logger.info(f"2. Open Bot URL: http://localhost:{PORT}/api/messages")
     logger.info("3. Leave App ID and Password empty for local testing")
     logger.info("=" * 70)
-    
-    app = create_app()
-    
+
     try:
-        web.run_app(app, host="localhost", port=PORT)
+        # Use localhost for local development (Bot Emulator compatibility)
+        # Use 0.0.0.0 for Azure deployment
+        host = "localhost" if not APP_ID else "0.0.0.0"
+        web.run_app(app, host=host, port=PORT)
     except Exception as error:
         logger.error(f"Failed to start application: {error}")
         sys.exit(1)

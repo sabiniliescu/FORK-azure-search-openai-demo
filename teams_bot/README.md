@@ -2,6 +2,16 @@
 
 Bot pentru Microsoft Teams care integrează cu backend-ul existent Azure OpenAI RAG (Retrieval Augmented Generation).
 
+## 🚀 Quick Start - Deployment în Azure
+
+**Vrei să deploiezi rapid în Azure?** Urmează ghidul simplu:
+
+👉 **[QUICKSTART.md](./QUICKSTART.md)** - Deploy în 3 pași (< 10 minute)
+
+Pentru deployment complet și detaliat, vezi [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+---
+
 ## Descriere
 
 Acest bot permite utilizatorilor să interacționeze cu sistemul de chat AI direct din Microsoft Teams, păstrând același backend puternic bazat pe Azure OpenAI și Azure AI Search.
@@ -10,11 +20,12 @@ Acest bot permite utilizatorilor să interacționeze cu sistemul de chat AI dire
 
 - ✅ Integrare completă cu backend-ul existent
 - ✅ Suport pentru conversații multi-turn
-- ✅ Afișare citări și surse
+- ✅ Afișare citări și surse (cu link mapping pentru optimizare tokeni)
 - ✅ Mesaje de bun venit personalizate
-- ✅ Comenzi rapide pentru subiecte comune
+- ✅ Formatare HTML pentru Teams (superscript, bold, etc.)
 - ✅ Menținere istoric conversație per utilizator
 - ✅ Typing indicators pentru feedback vizual
+- ✅ Economie de tokeni prin link mapping (vezi [LINK_MAPPING.md](./LINK_MAPPING.md))
 
 ## Structură Proiect
 
