@@ -38,6 +38,10 @@ services:
           run:  cd ../frontend;npm install;npm run build
           interactive: false
           continueOnError: false
+  teamsbot:
+    project: ./teams_bot
+    language: py
+    host: appservice
 pipeline:
   variables:
       - AZURE_OPENAI_SERVICE

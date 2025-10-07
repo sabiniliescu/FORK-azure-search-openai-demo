@@ -1303,6 +1303,26 @@ module documentIntelligenceRoleBackend 'core/security/role.bicep' = if (useUserU
   }
 }
 
+// Teams Bot deployment
+param deployTeamsBot bool = false
+param teamsBotAppId string = ''
+@secure()
+param teamsBotAppPassword string = ''
+
+module teamsBot 'teams-bot.bicep' = if (deployTeamsBot) {
+  scope: resourceGroup
+  name: 'teams-bot'
+  params: {
+    location: location
+    botName: 'mihai-teams-bot-${resourceToken}'
+    appServicePlanName: 'plan-teams-bot-${resourceToken}'
+    webAppName: 'app-teams-bot-${resourceToken}'
+    backendUrl: deploymentTarget == 'appservice' ? backend.outputs.uri : acaBackend.outputs.uri
+    microsoftAppId: teamsBotAppId
+    microsoftAppPassword: teamsBotAppPassword
+  }
+}
+
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenantId
 output AZURE_AUTH_TENANT_ID string = authTenantId
