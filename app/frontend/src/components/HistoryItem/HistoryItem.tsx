@@ -4,10 +4,13 @@ import styles from "./HistoryItem.module.css";
 import { DefaultButton } from "@fluentui/react";
 import { Delete24Regular } from "@fluentui/react-icons";
 
+import { Answers } from "../HistoryProviders/IProvider";
+
 export interface HistoryData {
     id: string;
     title: string;
     timestamp: number;
+    answers?: Answers;
 }
 
 interface HistoryItemProps {

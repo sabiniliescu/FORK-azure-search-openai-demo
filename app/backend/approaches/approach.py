@@ -1,4 +1,5 @@
 import os
+import sys
 from abc import ABC
 from collections.abc import AsyncGenerator, Awaitable
 from dataclasses import dataclass
@@ -34,6 +35,8 @@ from openai.types.chat import (
 )
 
 from approaches.promptmanager import PromptManager
+from Libra.utils import get_blob_link, AZURE_STORAGE_CONNECTION, CHUNK_STORAGE_CONTAINER_NAME
+from azure.storage.blob.aio import BlobServiceClient
 from core.authentication import AuthenticationHelper
 
 
@@ -101,6 +104,7 @@ class ExtraInfo:
     data_points: DataPoints
     thoughts: Optional[list[ThoughtStep]] = None
     followup_questions: Optional[list[Any]] = None
+    link_mapping: Optional[dict[str, str]] = None
 
 
 @dataclass
@@ -136,10 +140,13 @@ class Approach(ABC):
         "o3": GPTReasoningModelSupport(streaming=True),
         "o3-mini": GPTReasoningModelSupport(streaming=True),
         "o4-mini": GPTReasoningModelSupport(streaming=True),
+        "gpt-5": GPTReasoningModelSupport(streaming=True),
+        "gpt-5-nano": GPTReasoningModelSupport(streaming=True),
+        "gpt-5-mini": GPTReasoningModelSupport(streaming=True),
     }
     # Set a higher token limit for GPT reasoning models
-    RESPONSE_DEFAULT_TOKEN_LIMIT = 1024
-    RESPONSE_REASONING_DEFAULT_TOKEN_LIMIT = 8192
+    RESPONSE_DEFAULT_TOKEN_LIMIT = 3000
+    RESPONSE_REASONING_DEFAULT_TOKEN_LIMIT = 10000
 
     def __init__(
         self,
@@ -173,6 +180,8 @@ class Approach(ABC):
         self.prompt_manager = prompt_manager
         self.reasoning_effort = reasoning_effort
         self.include_token_usage = True
+        import logging
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def build_filter(self, overrides: dict[str, Any], auth_claims: dict[str, Any]) -> Optional[str]:
         include_category = overrides.get("include_category")
@@ -231,10 +240,10 @@ class Approach(ABC):
                 documents.append(
                     Document(
                         id=document.get("id"),
-                        content=document.get("content"),
+                        content=document.get("chunk"),
                         category=document.get("category"),
-                        sourcepage=document.get("sourcepage"),
-                        sourcefile=document.get("sourcefile"),
+                        sourcepage=document.get("link"),
+                        sourcefile=document.get("real_title"),
                         oids=document.get("oids"),
                         groups=document.get("groups"),
                         captions=cast(list[QueryCaptionResult], document.get("@search.captions")),
@@ -300,6 +309,15 @@ class Approach(ABC):
         )
 
         results = []
+        # Prepare optional Blob Service Client for generating SAS links
+        blob_service_client = None
+        blob_container_name = CHUNK_STORAGE_CONTAINER_NAME
+        storage_conn_str = AZURE_STORAGE_CONNECTION
+        if storage_conn_str and blob_container_name:
+            try:
+                blob_service_client = BlobServiceClient.from_connection_string(storage_conn_str)
+            except Exception:
+                blob_service_client = None
         if response and response.references:
             if results_merge_strategy == "interleaved":
                 # Use interleaved reference order
@@ -309,36 +327,115 @@ class Approach(ABC):
                 references = response.references
             for reference in references:
                 if isinstance(reference, KnowledgeAgentAzureSearchDocReference) and reference.source_data:
+                    page_number_raw = reference.source_data.get('page_number', '')
+                    if not isinstance(page_number_raw, str):
+                        page_number_raw = str(page_number_raw) if page_number_raw is not None else ''
+                    page_number_clean = page_number_raw.replace('["', '').replace('"]', '')
+
+                    page_number = reference.source_data.get('page_number', '')
+                    doc_title = reference.source_data.get('real_title', '')
+                    if page_number is None:
+                        page_number = "N/A"
+                        self.logger.info(f"Page number is None for document with title {doc_title}")
+                    elif page_number == '["-1"]':
+                        page_number = "N/A"
+                        self.logger.info(f"Page number is -1 for document with title {doc_title}")
+                    if '[' in page_number:
+                        page_number = page_number[2:-2]
+
+                    # print("Debug Agentic source_data:", f"{reference.source_data.get('real_title', '')} pagina {page_number_clean} (page number = {page_number} blob_service_client = {blob_service_client} and blob_container_name = {blob_container_name}) ")  # DEBUG
+
+                    # Compute link: prefer SAS blob link when configuration is available
+                    computed_link = reference.source_data.get("link", None)
+                    if blob_service_client and blob_container_name:
+                        blob_name = reference.source_data.get("title") or reference.doc_key
+                        # Normalize page number: pass "N/A" if empty
+                        page_for_link = page_number if page_number else "N/A"
+                        try:
+                            computed_link = await get_blob_link(
+                                blob_service_client=blob_service_client,
+                                blob_name=blob_name,
+                                container_name=blob_container_name,
+                                page_number=page_for_link,
+                            )
+                        except Exception as _:
+                            # Fallback to original link if SAS generation fails
+                            pass
                     results.append(
                         Document(
                             id=reference.doc_key,
-                            content=reference.source_data["content"],
-                            sourcepage=reference.source_data["sourcepage"],
+                            content=reference.source_data["chunk"],
+                            sourcepage=computed_link,
+                            sourcefile=f"{reference.source_data.get('real_title', '')} pagina {page_number_clean}",
                             search_agent_query=activity_mapping[reference.activity_source],
                         )
                     )
                 if top and len(results) == top:
                     break
-
+        # Dispose blob client if created
+        if blob_service_client:
+            try:
+                await blob_service_client.close()
+            except Exception:
+                pass
         return response, results
 
+    def create_link_mapping(self, results: list[Document]) -> dict[str, str]:
+        """
+        Creează un mapping între ID-uri scurte (link1, link2, etc.) și linkurile lungi reale.
+        Returnează un dicționar unde key = ID scurt, value = link lung.
+        """
+        link_mapping = {}
+        link_counter = 1
+        
+        for doc in results:
+            if doc.sourcepage:
+                link_id = f"link{link_counter}"
+                link_mapping[link_id] = doc.sourcepage
+                link_counter += 1
+        
+        # print(f"[DEBUG] Created link mapping: {link_mapping}")
+        return link_mapping
+
     def get_sources_content(
-        self, results: list[Document], use_semantic_captions: bool, use_image_citation: bool
+        self, results: list[Document], use_semantic_captions: bool, use_image_citation: bool, 
+        link_mapping: dict[str, str] = None
     ) -> list[str]:
 
         def nonewlines(s: str) -> str:
             return s.replace("\n", " ").replace("\r", " ")
 
+        def format_source(doc):
+            # Extrage titlul și pagina din sourcefile, elimină '_' de la început dacă există
+            if doc.sourcefile:
+                titlu_pagina = doc.sourcefile.lstrip('_').strip()
+            else:
+                titlu_pagina = self.get_citation((doc.sourcepage or ""), use_image_citation)
+            
+            original_link = doc.sourcepage or ""
+            
+            # Dacă avem un mapping de linkuri, folosim ID-ul scurt în loc de linkul lung
+            if link_mapping and original_link:
+                link_id = None
+                for short_id, long_link in link_mapping.items():
+                    if long_link == original_link:
+                        link_id = short_id
+                        break
+                
+                if link_id:
+                    # print(f"[DEBUG] get_sources_content: Replacing {original_link[:50]}... with {link_id}", file=sys.stdout)
+                    return f"[{titlu_pagina}]({link_id})"
+            
+            return f"[{titlu_pagina}]({original_link})"
+
         if use_semantic_captions:
             return [
-                (self.get_citation((doc.sourcepage or ""), use_image_citation))
-                + ": "
-                + nonewlines(" . ".join([cast(str, c.text) for c in (doc.captions or [])]))
+                format_source(doc) + ": " + nonewlines(" . ".join([cast(str, c.text) for c in (doc.captions or [])]))
                 for doc in results
             ]
         else:
             return [
-                (self.get_citation((doc.sourcepage or ""), use_image_citation)) + ": " + nonewlines(doc.content or "")
+                format_source(doc) + ": " + nonewlines(doc.content or "")
                 for doc in results
             ]
 

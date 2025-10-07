@@ -1,23 +1,23 @@
 {
-    "pageTitle": "Azure OpenAI + AI Search",
-    "headerTitle": "Azure OpenAI + AI Search",
-    "chat": "Chat",
-    "qa": "Ask a question",
+    "pageTitle": "MihAI Web",
+    "headerTitle": "MihAI. Stie tot despre documentele Libra",
+    "chat": "",
+    "qa": "",
     "login": "Login",
     "logout": "Logout",
-    "clearChat": "Clear chat",
+    "clearChat": "Incepe o nouă conversație",
     "history": {
-        "chatHistory": "Chat history",
-        "openChatHistory": "Open chat history",
-        "noHistory": "No chat history",
-        "deleteModalTitle": "Delete chat history",
-        "deleteModalDescription": "This action cannot be undone. Delete this chat history?",
-        "deleteLabel": "Delete",
-        "cancelLabel": "Cancel",
-        "today": "Today",
-        "yesterday": "Yesterday",
-        "last7days": "Last 7 days",
-        "last30days": "Last 30 days"
+        "chatHistory": "Istoric conversație",
+        "openChatHistory": "Istoric conversație",
+        "noHistory": "Nu există istoric",
+        "deleteModalTitle": "Șterge istoric conversație",
+        "deleteModalDescription": "Aceasta actiune nu poate fi anulată. Șterge acest istoric conversație?",
+        "deleteLabel": "Șterge",
+        "cancelLabel": "Anulează",
+        "today": "Astazi",
+        "yesterday": "Ieri",
+        "last7days": "Ultimele 7 zile",
+        "last30days": "Ultimele 30 zile"
     },
     "upload": {
         "fileLabel": "Upload file:",
@@ -34,42 +34,85 @@
     },
     "developerSettings": "Developer settings",
 
-    "chatEmptyStateTitle": "Chat with your data",
-    "chatEmptyStateSubtitle": "Ask anything or try an example",
+    "chatEmptyStateTitle": "Identifică informații din Librahome",
+    "chatEmptyStateSubtitle": "Întreabă-mă orice sau încearcă unul dintre exemplele de mai jos pentru a începe",
     "defaultExamples": {
-        "1": "What is included in my Northwind Health Plus plan that is not in standard?",
-        "2": "What happens in a performance review?",
-        "3": "What does a Product Manager do?",
-        "placeholder": "Type a new question (e.g. does my plan cover annual eye exams?)"
+        "1": "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+        "1Variants": [
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Am înțeles că există teste obligatorii de susținut anual. Care sunt, când se susțin și ce presupune daca nu promovez?",
+            "Am înțeles că există teste obligatorii de susținut anual. Care sunt, când se susțin și ce presupune daca nu promovez?",
+            "Am înțeles că există teste obligatorii de susținut anual. Care sunt, când se susțin și ce presupune daca nu promovez?",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay"
+        ],
+        "2": "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+        "2Variants": [
+            "Ce este programul buddy pentru noii angajați?",
+            "Ce este programul buddy pentru noii angajați?",
+            "Ce este programul buddy pentru noii angajați?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?"
+        ],
+        "3": "Îmi doresc să promovez în carieră, cum pot face asta?",
+        "3Variants": [
+            "Compară într-un tabel cardurile Avanpost Gold și Free?",
+            "Compară într-un tabel cardurile Avanpost Gold și Free?",
+            "Compară într-un tabel cardurile Avanpost Gold și Free?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?"
+        ],
+        "placeholder": "Adresează-mi o întrebare despre documentele Libra"
     },
     "askTitle": "Ask your data",
     "gpt4vExamples": {
-        "1": "Compare the impact of interest rates and GDP in financial markets.",
-        "2": "What is the expected trend for the S&P 500 index over the next five years? Compare it to the past S&P 500 performance",
-        "3": "Can you identify any correlation between oil prices and stock market trends?",
-        "placeholder": "Example: Does my plan cover annual eye exams?"
+        "1": "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+        "1Variants": [
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay",
+            "Scrie un email, către un potențial client, care să prezinte serviciul LibraPay"
+        ],
+        "2": "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+        "2Variants": [
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?",
+            "Cum pot să îmi îmbunătățesc rezultatele în vânzări?"
+        ],
+        "3": "Îmi doresc să promovez în carieră, cum pot face asta?",
+        "3Variants": [
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?",
+            "Îmi doresc să promovez în carieră, cum pot face asta?"
+        ],
+        "placeholder": "Adresează-mi o întrebare despre documentele Libra"
     },
-    "generatingAnswer": "Generating answer",
-    "citationWithColon": "Citation:",
-    "followupQuestions": "Follow-up questions:",
+    "generatingAnswer": "Răsfoiesc documentele Libra pentru a găsi răspunsul...",
+    "citationWithColon": "Citat:",
+    "followupQuestions": "Întrebări suplimentare:",
 
     "tooltips": {
-        "submitQuestion": "Submit question",
-        "askWithVoice": "Ask question with voice",
-        "stopRecording": "Stop recording question",
-        "showThoughtProcess": "Show thought process",
-        "showSupportingContent": "Show supporting content",
-        "speakAnswer": "Speak answer",
-        "info": "Info",
-        "save": "Save",
-        "copy": "Copy",
-        "copied": "Copied!"
+        "submitQuestion": "Trimite",
+        "stopStreaming": "Oprește",
+        "askWithVoice": "Întreabă cu vocea",
+        "stopRecording": "Oprește înregistrarea întrebării",
+        "showThoughtProcess": "Arată procesul de gândire",
+        "showSupportingContent": "Arată conținutul identificat",
+        "speakAnswer": "Vorbește răspunsul",
+        "info": "Informații",
+        "save": "Salvează",
+        "copy": "Copiază",
+        "copied": "Copiat!"
     },
 
     "headerTexts":{
-        "thoughtProcess": "Thought Process",
-        "supportingContent": "Supporting Content",
-        "citation": "Citation"
+        "thoughtProcess": "Proces de gândire",
+        "supportingContent": "Conținut identificat",
+        "citation": "Citat"
     },
 
     "labels": {
@@ -175,5 +218,10 @@
         "useOidSecurityFilter": "Filter search results based on the authenticated user's OID.",
         "useGroupsSecurityFilter": "Filter search results based on the authenticated user's groups.",
         "useAgenticRetrieval": "Use agentic retrieval from Azure AI Search for multi-query planning. Always uses semantic ranker."
+    },
+
+    "errors": {
+        "abortError": "Oprit",
+        "retryButton": "Retrimite"
     }
 }

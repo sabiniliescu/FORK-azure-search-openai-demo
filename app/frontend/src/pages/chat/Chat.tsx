@@ -69,6 +69,7 @@ const Chat = () => {
 
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isStreaming, setIsStreaming] = useState<boolean>(false);
+    const [streamAbortController, setStreamAbortController] = useState<AbortController | null>(null);
     const [error, setError] = useState<unknown>();
 
     const [activeCitation, setActiveCitation] = useState<string>();
@@ -78,6 +79,7 @@ const Chat = () => {
     const [answers, setAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
     const [streamedAnswers, setStreamedAnswers] = useState<[user: string, response: ChatAppResponse][]>([]);
     const [speechUrls, setSpeechUrls] = useState<(string | null)[]>([]);
+    const [isHistoryChat, setIsHistoryChat] = useState<boolean>(false); // Track if showing history chat
 
     const [showGPT4VOptions, setShowGPT4VOptions] = useState<boolean>(false);
     const [showSemanticRankerOption, setShowSemanticRankerOption] = useState<boolean>(false);
@@ -93,6 +95,7 @@ const Chat = () => {
     const [showChatHistoryCosmos, setShowChatHistoryCosmos] = useState<boolean>(false);
     const [showAgenticRetrievalOption, setShowAgenticRetrievalOption] = useState<boolean>(false);
     const [useAgenticRetrieval, setUseAgenticRetrieval] = useState<boolean>(false);
+    const [showDeveloperFeatures, setShowDeveloperFeatures] = useState<boolean>(false);
 
     const audio = useRef(new Audio()).current;
     const [isPlaying, setIsPlaying] = useState(false);
@@ -107,6 +110,7 @@ const Chat = () => {
 
     const getConfig = async () => {
         configApi().then(config => {
+            console.log("📋 Configurație încărcată:", config);
             setShowGPT4VOptions(config.showGPT4VOptions);
             if (config.showGPT4VOptions) {
                 setUseGPT4V(true);
@@ -136,13 +140,19 @@ const Chat = () => {
             setShowChatHistoryCosmos(config.showChatHistoryCosmos);
             setShowAgenticRetrievalOption(config.showAgenticRetrievalOption);
             setUseAgenticRetrieval(config.showAgenticRetrievalOption);
+            setShowDeveloperFeatures(config.showDeveloperFeatures);
             if (config.showAgenticRetrievalOption) {
                 setRetrieveCount(10);
             }
         });
     };
 
-    const handleAsyncRequest = async (question: string, answers: [string, ChatAppResponse][], responseBody: ReadableStream<any>) => {
+    const handleAsyncRequest = async (
+        question: string,
+        answers: [string, ChatAppResponse][],
+        responseBody: ReadableStream<any>,
+        abortController: AbortController
+    ) => {
         let answer: string = "";
         let askResponse: ChatAppResponse = {} as ChatAppResponse;
 
@@ -152,7 +162,8 @@ const Chat = () => {
                     answer += newContent;
                     const latestResponse: ChatAppResponse = {
                         ...askResponse,
-                        message: { content: answer, role: askResponse.message.role }
+                        message: { content: answer, role: askResponse.message.role },
+                        tracking: askResponse.tracking // Includem tracking info și în update-uri
                     };
                     setStreamedAnswers([...answers, [question, latestResponse]]);
                     resolve(null);
@@ -162,9 +173,31 @@ const Chat = () => {
         try {
             setIsStreaming(true);
             for await (const event of readNDJSONStream(responseBody)) {
+                // Verifică dacă streaming-ul a fost oprit
+                if (abortController.signal.aborted) {
+                    console.log("� Streaming oprit de utilizator");
+                    break;
+                }
+
+                console.log("�🔄 Stream event:", event);
+                console.log("🔄 Event keys:", Object.keys(event));
+
+                // Verificăm tracking în primul rând, indiferent de alte proprietăți
+                if (event["tracking"]) {
+                    askResponse.tracking = event["tracking"];
+                    console.log("✅ Tracking captured:", event["tracking"]);
+                }
+
                 if (event["context"] && event["context"]["data_points"]) {
                     event["message"] = event["delta"];
+                    // IMPORTANT: Păstrăm tracking info înainte de suprascrierea askResponse
+                    const preservedTracking = askResponse.tracking;
                     askResponse = event as ChatAppResponse;
+                    // Restaurăm tracking info
+                    if (preservedTracking) {
+                        askResponse.tracking = preservedTracking;
+                        console.log("🔄 Preserving tracking in askResponse:", askResponse.tracking);
+                    }
                 } else if (event["delta"] && event["delta"]["content"]) {
                     setIsLoading(false);
                     await updateState(event["delta"]["content"]);
@@ -177,12 +210,22 @@ const Chat = () => {
             }
         } finally {
             setIsStreaming(false);
+            setStreamAbortController(null);
         }
         const fullResponse: ChatAppResponse = {
             ...askResponse,
-            message: { content: answer, role: askResponse.message.role }
+            message: { content: answer, role: askResponse.message.role },
+            tracking: askResponse.tracking // Păstrăm tracking info
         };
+        console.log("🎯 Full response with tracking:", fullResponse.tracking);
         return fullResponse;
+    };
+
+    const stopStreaming = () => {
+        if (streamAbortController) {
+            streamAbortController.abort();
+            console.log("🛑 Oprind streaming-ul...");
+        }
     };
 
     const client = useLogin ? useMsal().instance : undefined;
@@ -200,8 +243,10 @@ const Chat = () => {
 
         error && setError(undefined);
         setIsLoading(true);
+        console.log("🚀 Începem procesarea cererii, isLoading=true");
         setActiveCitation(undefined);
         setActiveAnalysisPanelTab(undefined);
+        setIsHistoryChat(false); // Reset history chat flag for new conversations
 
         const token = client ? await getToken(client) : undefined;
 
@@ -244,7 +289,13 @@ const Chat = () => {
                 session_state: answers.length ? answers[answers.length - 1][1].session_state : null
             };
 
-            const response = await chatApi(request, shouldStream, token);
+            // Creăm un nou AbortController pentru această cerere
+            const abortController = new AbortController();
+            // Setăm streamAbortController pentru a activa butonul STOP
+            setStreamAbortController(abortController);
+            console.log("🎯 AbortController setat, shouldStream:", shouldStream);
+
+            const response = await chatApi(request, shouldStream, token, abortController);
             if (!response.body) {
                 throw Error("No response body");
             }
@@ -252,7 +303,8 @@ const Chat = () => {
                 throw Error(`Request failed with status ${response.status}`);
             }
             if (shouldStream) {
-                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, response.body);
+                const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, response.body, abortController);
+                console.log("💾 Setting answer with tracking:", parsedResponse.tracking);
                 setAnswers([...answers, [question, parsedResponse]]);
                 if (typeof parsedResponse.session_state === "string" && parsedResponse.session_state !== "") {
                     const token = client ? await getToken(client) : undefined;
@@ -271,9 +323,17 @@ const Chat = () => {
             }
             setSpeechUrls([...speechUrls, null]);
         } catch (e) {
-            setError(e);
+            // Verificăm dacă eroarea este din cauza abort-ului
+            if (e instanceof Error && (e.name === "AbortError" || e.message.includes("aborted"))) {
+                console.log("⏹️ Request oprit de utilizator");
+                setError("Oprit");
+            } else {
+                setError(e);
+            }
         } finally {
             setIsLoading(false);
+            setStreamAbortController(null);
+            console.log("🏁 Request finalizat, resetăm AbortController");
         }
     };
 
@@ -287,6 +347,7 @@ const Chat = () => {
         setStreamedAnswers([]);
         setIsLoading(false);
         setIsStreaming(false);
+        setIsHistoryChat(false); // Reset history chat flag
     };
 
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "smooth" }), [isLoading]);
@@ -410,7 +471,7 @@ const Chat = () => {
                 <div className={styles.commandsContainer}>
                     <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading} />
                     {showUserUpload && <UploadFile className={styles.commandButton} disabled={!loggedIn} />}
-                    <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />
+                    {showDeveloperFeatures && <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />}
                 </div>
             </div>
             <div className={styles.chatRoot} style={{ marginLeft: isHistoryPanelOpen ? "300px" : "0" }}>
@@ -446,6 +507,14 @@ const Chat = () => {
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
                                                 showSpeechOutputAzure={showSpeechOutputAzure}
                                                 showSpeechOutputBrowser={showSpeechOutputBrowser}
+                                                showFeedback={!isHistoryChat}
+                                                showDeveloperFeatures={showDeveloperFeatures}
+                                                requestId={(() => {
+                                                    console.log("Passing tracking to streaming Answer:", streamedAnswer[1].tracking);
+                                                    return streamedAnswer[1].tracking?.request_id;
+                                                })()}
+                                                sessionId={streamedAnswer[1].tracking?.session_id}
+                                                conversationId={streamedAnswer[1].tracking?.conversation_id}
                                             />
                                         </div>
                                     </div>
@@ -469,6 +538,14 @@ const Chat = () => {
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
                                                 showSpeechOutputAzure={showSpeechOutputAzure}
                                                 showSpeechOutputBrowser={showSpeechOutputBrowser}
+                                                showFeedback={!isHistoryChat}
+                                                showDeveloperFeatures={showDeveloperFeatures}
+                                                requestId={(() => {
+                                                    console.log("Passing tracking to Answer:", answer[1].tracking);
+                                                    return answer[1].tracking?.request_id;
+                                                })()}
+                                                sessionId={answer[1].tracking?.session_id}
+                                                conversationId={answer[1].tracking?.conversation_id}
                                             />
                                         </div>
                                     </div>
@@ -500,6 +577,8 @@ const Chat = () => {
                             disabled={isLoading}
                             onSend={question => makeApiRequest(question)}
                             showSpeechInput={showSpeechInput}
+                            isStreaming={isStreaming || (isLoading && streamAbortController !== null)}
+                            onStopStreaming={stopStreaming}
                         />
                     </div>
                 </div>
@@ -524,7 +603,12 @@ const Chat = () => {
                         onChatSelected={answers => {
                             if (answers.length === 0) return;
                             setAnswers(answers);
-                            lastQuestionRef.current = answers[answers.length - 1][0];
+                            setIsHistoryChat(true); // Mark as history chat to hide feedback
+                            // Fix: Defensive assignment for lastQuestionRef.current in all usages
+                            lastQuestionRef.current =
+                                Array.isArray(answers[answers.length - 1]) && typeof answers[answers.length - 1][0] === "string"
+                                    ? answers[answers.length - 1][0]
+                                    : "";
                         }}
                     />
                 )}

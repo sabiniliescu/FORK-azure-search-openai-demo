@@ -96,7 +96,7 @@ class RetrieveThenReadApproach(Approach):
                 self.chatgpt_model,
                 messages=messages,
                 overrides=overrides,
-                response_token_limit=self.get_response_token_limit(self.chatgpt_model, 1024),
+                response_token_limit=self.get_response_token_limit(self.chatgpt_model, 3000),
             ),
         )
         extra_info.thoughts.append(
@@ -151,7 +151,9 @@ class RetrieveThenReadApproach(Approach):
             use_query_rewriting,
         )
 
-        text_sources = self.get_sources_content(results, use_semantic_captions, use_image_citation=False)
+        # Creează mapping-ul de linkuri pentru optimizarea streaming-ului
+        link_mapping = self.create_link_mapping(results)
+        text_sources = self.get_sources_content(results, use_semantic_captions, use_image_citation=False, link_mapping=link_mapping)
 
         return ExtraInfo(
             DataPoints(text=text_sources),
@@ -174,6 +176,7 @@ class RetrieveThenReadApproach(Approach):
                     [result.serialize_for_results() for result in results],
                 ),
             ],
+            link_mapping=link_mapping  # Adaugă mapping-ul în extra_info
         )
 
     async def run_agentic_retrieval_approach(
@@ -201,7 +204,9 @@ class RetrieveThenReadApproach(Approach):
             results_merge_strategy=results_merge_strategy,
         )
 
-        text_sources = self.get_sources_content(results, use_semantic_captions=False, use_image_citation=False)
+        # Creează mapping-ul de linkuri pentru optimizarea streaming-ului
+        link_mapping = self.create_link_mapping(results)
+        text_sources = self.get_sources_content(results, use_semantic_captions=False, use_image_citation=False, link_mapping=link_mapping)
 
         extra_info = ExtraInfo(
             DataPoints(text=text_sources),
@@ -228,5 +233,6 @@ class RetrieveThenReadApproach(Approach):
                     },
                 ),
             ],
+            link_mapping=link_mapping  # Adaugă mapping-ul în extra_info
         )
         return extra_info

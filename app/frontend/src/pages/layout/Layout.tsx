@@ -38,9 +38,25 @@ const Layout = () => {
         <div className={styles.layout}>
             <header className={styles.header} role={"banner"}>
                 <div className={styles.headerContainer} ref={menuRef}>
-                    <Link to="/" className={styles.headerTitleContainer}>
-                        <h3 className={styles.headerTitle}>{t("headerTitle")}</h3>
-                    </Link>
+                    <div className={styles.headerTitleContainer}>
+                        {(() => {
+                            const headerTitle = t("headerTitle");
+                            const [firstWord, ...rest] = headerTitle.split(" ");
+                            const restText = rest.join(" ");
+                            const fwLen = firstWord.length;
+                            const fwMain = firstWord.slice(0, fwLen - 2);
+                            const fwLast2 = firstWord.slice(fwLen - 2);
+                            return (
+                                <h3 className={styles.headerTitle}>
+                                    <span className={styles.headerTitleFirst}>
+                                        {fwMain}
+                                        <span className={styles.headerTitleLast2}>{fwLast2}</span>
+                                    </span>
+                                    {restText ? ` ${restText}` : ""}
+                                </h3>
+                            );
+                        })()}
+                    </div>
                     <nav>
                         <ul className={`${styles.headerNavList} ${menuOpen ? styles.show : ""}`}>
                             <li>

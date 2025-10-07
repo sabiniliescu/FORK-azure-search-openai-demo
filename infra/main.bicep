@@ -278,6 +278,20 @@ param useLocalHtmlParser bool = false
 @description('Use AI project')
 param useAiProject bool = false
 
+// Azure SQL Database parameters for chat logging
+@description('Azure SQL Server name for chat logging')
+param azureSqlServer string = 'mihaiweb.database.windows.net'
+@description('Azure SQL Database name for chat logging')
+param azureSqlDatabase string = 'MihAI_Web_logs'
+@description('Azure SQL Username for chat logging')
+param azureSqlUsername string = 'mihaiuser'
+@description('Azure SQL Password for chat logging')
+@secure()
+param azureSqlPassword string = ''
+
+@description('Storage key for additional storage access')
+param storageKey string = ''
+
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = { 'azd-env-name': environmentName }
@@ -462,6 +476,12 @@ var appEnvVariables = {
   ALLOWED_ORIGIN: join(allowedOrigins, ';')
   USE_VECTORS: useVectors
   USE_GPT4V: useGPT4V
+  // Azure SQL Database for chat logging
+  AZURE_SQL_SERVER: azureSqlServer
+  AZURE_SQL_DATABASE: azureSqlDatabase
+  AZURE_SQL_USERNAME: azureSqlUsername
+  AZURE_SQL_PASSWORD: azureSqlPassword
+  STORAGE_KEY: storageKey
   USE_USER_UPLOAD: useUserUpload
   AZURE_USERSTORAGE_ACCOUNT: useUserUpload ? userStorage.outputs.name : ''
   AZURE_USERSTORAGE_CONTAINER: useUserUpload ? userStorageContainerName : ''
@@ -781,7 +801,9 @@ module searchService 'core/search/search-services.bicep' = {
     name: !empty(searchServiceName) ? searchServiceName : 'gptkb-${resourceToken}'
     location: !empty(searchServiceLocation) ? searchServiceLocation : location
     tags: tags
-    disableLocalAuth: true
+    authOptions: {
+      aadOrApiKeyAuthOption: {}
+    }
     sku: {
       name: searchServiceSkuName
     }
@@ -1278,6 +1300,26 @@ module documentIntelligenceRoleBackend 'core/security/role.bicep' = if (useUserU
       : acaBackend.outputs.identityPrincipalId
     roleDefinitionId: 'a97b65f3-24c7-4388-baec-2e87135dc908'
     principalType: 'ServicePrincipal'
+  }
+}
+
+// Teams Bot deployment
+param deployTeamsBot bool = false
+param teamsBotAppId string = ''
+@secure()
+param teamsBotAppPassword string = ''
+
+module teamsBot 'teams-bot.bicep' = if (deployTeamsBot) {
+  scope: resourceGroup
+  name: 'teams-bot'
+  params: {
+    location: location
+    botName: 'mihai-teams-bot-${resourceToken}'
+    appServicePlanName: 'plan-teams-bot-${resourceToken}'
+    webAppName: 'app-teams-bot-${resourceToken}'
+    backendUrl: deploymentTarget == 'appservice' ? backend.outputs.uri : acaBackend.outputs.uri
+    microsoftAppId: teamsBotAppId
+    microsoftAppPassword: teamsBotAppPassword
   }
 }
 

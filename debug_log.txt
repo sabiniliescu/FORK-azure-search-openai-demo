@@ -1,0 +1,15 @@
+
+Deploying services (azd deploy)
+
+Deploying service backend
+Deploying service backend (Packing remote build context)
+Deploying service backend (Uploading remote build context)
+Deploying service backend (Updating container app revision)
+Deploying service backend (Fetching endpoints for container app service)
+  (✓) Done: Deploying service backend
+  - Endpoint: https://capps-backend-dcnxgznrq3wmc.happyground-5a8ca1ce.eastus.azurecontainerapps.io/
+
+
+SUCCESS: Your application was deployed to Azure in 3 minutes 19 seconds.
+You can view the resources created under the resource group rg-mihai-web in Azure Portal:
+https://portal.azure.com/#@/resource/subscriptions/5487059e-7469-4758-9c9e-6f4196b4ebf7/resourceGroups/rg-mihai-web/overview

@@ -5,6 +5,8 @@ import logging
 import mimetypes
 import os
 import time
+import sys
+import uuid
 from collections.abc import AsyncGenerator
 from pathlib import Path
 from typing import Any, Union, cast
@@ -47,6 +49,9 @@ from quart import (
     request,
     send_file,
     send_from_directory,
+    Response,
+    request,
+    jsonify,
 )
 from quart_cors import cors
 
@@ -70,6 +75,7 @@ from config import (
     CONFIG_CHAT_VISION_APPROACH,
     CONFIG_CREDENTIAL,
     CONFIG_DEFAULT_REASONING_EFFORT,
+    CONFIG_DEVELOPER_FEATURES_ENABLED,
     CONFIG_GPT4V_DEPLOYED,
     CONFIG_INGESTER,
     CONFIG_LANGUAGE_PICKER_ENABLED,
@@ -94,6 +100,7 @@ from core.authentication import AuthenticationHelper
 from core.sessionhelper import create_session_id
 from decorators import authenticated, authenticated_path
 from error import error_dict, error_response
+from chat_logging.chat_logger import chat_logger
 from prepdocs import (
     clean_key_if_exists,
     setup_embeddings_service,
@@ -223,6 +230,10 @@ async def chat(auth_claims: dict[str, Any]):
     request_json = await request.get_json()
     context = request_json.get("context", {})
     context["auth_claims"] = auth_claims
+    
+    # Generăm un ID unic pentru această cerere
+    request_id = str(uuid.uuid4())
+    
     try:
         use_gpt4v = context.get("overrides", {}).get("use_gpt4v", False)
         approach: Approach
@@ -239,11 +250,87 @@ async def chat(auth_claims: dict[str, Any]):
                 current_app.config[CONFIG_CHAT_HISTORY_COSMOS_ENABLED],
                 current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED],
             )
+        
+        # Extragem informațiile pentru logging
+        messages = request_json.get("messages", [])
+        user_question = messages[-1].get("content", "") if messages else ""
+        user_id = auth_claims.get("oid")  # Object ID din Azure AD
+        overrides = context.get("overrides", {})
+        
         result = await approach.run(
             request_json["messages"],
             context=context,
             session_state=session_state,
         )
+        
+        # Finalizăm logging-ul
+        answer = result.get("message", {}).get("content", "") if isinstance(result, dict) else ""
+        tokens_used = None
+        
+        # Extragem extra_info pentru logging extins
+        extra_info = None
+        if isinstance(result, dict):
+            extra_info = result.get("context")
+        
+        # Extragem token usage din extra_info dacă este disponibil
+        agentic_token_usage = None
+        prompt_token_usage = None
+        thoughts_serialized = ""
+        agentic_duration = None
+        
+        if extra_info and hasattr(extra_info, 'thoughts'):
+            # Extragem token usage pentru agentic retrieval
+            agentic_token_usage = chat_logger._extract_agentic_token_usage(extra_info.thoughts)
+            
+            # Extragem token usage total pentru prompt-uri
+            prompt_token_usage = chat_logger._extract_prompt_token_usage(extra_info.thoughts)
+            
+            # Serializăm thoughts pentru salvare
+            thoughts_serialized = chat_logger._serialize_thoughts(extra_info.thoughts)
+        
+        # Extragem durata agentic dacă există
+        if extra_info and hasattr(extra_info, 'agentic_duration_seconds'):
+            agentic_duration = extra_info.agentic_duration_seconds
+        
+        # Extragem timestamp-ul real de start dacă există
+        real_start_timestamp = None
+        if extra_info and hasattr(extra_info, 'real_start_timestamp'):
+            real_start_timestamp = extra_info.real_start_timestamp
+        
+        # Începem logging-ul cu informațiile extrase
+        # Capturăm modelul real din approach (dacă este disponibil)
+        actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
+        
+        chat_logger.start_chat_log(
+            request_id=request_id,
+            question=user_question,
+            user_id=user_id,
+            conversation_id=session_state,
+            extra_info_thoughts=thoughts_serialized,
+            agentic_retrival_total_token_usage=agentic_token_usage,
+            prompt_total_token_usage=prompt_token_usage,
+            model_used=actual_model,
+            temperature=overrides.get("temperature"),
+            timestamp_start=real_start_timestamp
+        )
+        
+        # Încercăm să extragem token usage din result pentru finish_chat_log
+        # Tokens_used nu mai e folosit - eliminat din funcție
+        
+        chat_logger.finish_chat_log(
+            request_id=request_id,
+            answer=answer,
+            agentic_retrival_duration_seconds=agentic_duration
+        )
+        
+        # Adăugăm informații de tracking pentru feedback
+        if isinstance(result, dict):
+            result["tracking"] = {
+                "request_id": request_id,
+                "session_id": session_state,
+                "conversation_id": session_state  # folosim același session_state pentru ambele
+            }
+        
         return jsonify(result)
     except Exception as error:
         return error_response(error, "/chat")
@@ -257,6 +344,10 @@ async def chat_stream(auth_claims: dict[str, Any]):
     request_json = await request.get_json()
     context = request_json.get("context", {})
     context["auth_claims"] = auth_claims
+    
+    # Generăm un ID unic pentru această cerere
+    request_id = str(uuid.uuid4())
+    
     try:
         use_gpt4v = context.get("overrides", {}).get("use_gpt4v", False)
         approach: Approach
@@ -273,18 +364,144 @@ async def chat_stream(auth_claims: dict[str, Any]):
                 current_app.config[CONFIG_CHAT_HISTORY_COSMOS_ENABLED],
                 current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED],
             )
+        
+        # Extragem informațiile pentru logging
+        messages = request_json.get("messages", [])
+        user_question = messages[-1].get("content", "") if messages else ""
+        user_id = auth_claims.get("oid")  # Object ID din Azure AD
+        overrides = context.get("overrides", {})
+        
         result = await approach.run_stream(
             request_json["messages"],
             context=context,
             session_state=session_state,
         )
-        response = await make_response(format_as_ndjson(result))
+        
+        # Pentru stream, colectăm răspunsul pentru logging
+        async def logged_result_generator():
+            full_answer = ""
+            extra_info_received = None
+            first_item = True
+            logging_started = False
+            streaming_started = False
+            agentic_duration_for_logging = None
+            
+            async for item in result:
+                if isinstance(item, dict):
+                    # Adăugăm tracking info la primul item
+                    if first_item:
+                        item["tracking"] = {
+                            "request_id": request_id,
+                            "session_id": session_state,
+                            "conversation_id": session_state
+                        }
+                        first_item = False
+                    
+                    # Salvăm extra_info și începem logging când primim context
+                    if "context" in item:
+                        extra_info_received = item["context"]
+                        
+                        # Începem logging-ul când avem context cu extra_info
+                        if not logging_started and extra_info_received:
+                            # Extragem informațiile pentru logging extins
+                            agentic_token_usage = None
+                            prompt_token_usage = None
+                            thoughts_serialized = ""
+                            agentic_duration = None
+                            
+                            if hasattr(extra_info_received, 'thoughts'):
+                                # Extragem token usage pentru agentic retrieval
+                                agentic_token_usage = chat_logger._extract_agentic_token_usage(extra_info_received.thoughts)
+                                
+                                # Extragem token usage total pentru prompt-uri
+                                prompt_token_usage = chat_logger._extract_prompt_token_usage(extra_info_received.thoughts)
+                                
+                                # Serializăm thoughts pentru salvare
+                                thoughts_serialized = chat_logger._serialize_thoughts(extra_info_received.thoughts)
+                            
+                            # Extragem durata agentic dacă există
+                            if hasattr(extra_info_received, 'agentic_duration_seconds'):
+                                agentic_duration = extra_info_received.agentic_duration_seconds
+                                agentic_duration_for_logging = agentic_duration
+                            
+                            # Extragem timestamp-ul real de start dacă există
+                            real_start_timestamp = None
+                            if hasattr(extra_info_received, 'real_start_timestamp'):
+                                real_start_timestamp = extra_info_received.real_start_timestamp
+                            
+                            # Capturăm modelul real din approach
+                            actual_model = getattr(approach, 'chatgpt_model', overrides.get("chatgpt_model", "unknown"))
+                            
+                            chat_logger.start_chat_log(
+                                request_id=request_id,
+                                question=user_question,
+                                user_id=user_id,
+                                conversation_id=session_state,
+                                extra_info_thoughts=thoughts_serialized,
+                                agentic_retrival_total_token_usage=agentic_token_usage,
+                                prompt_total_token_usage=prompt_token_usage,
+                                model_used=actual_model,
+                                temperature=overrides.get("temperature"),
+                                timestamp_start=real_start_timestamp
+                            )
+                            logging_started = True
+                    
+                    # Acumulăm răspunsul pentru logging
+                    if "delta" in item and isinstance(item["delta"], dict) and "content" in item["delta"]:
+                        content = item["delta"]["content"]
+                        if content:
+                            # Marcăm începutul streaming-ului la primul content
+                            if not streaming_started and logging_started:
+                                chat_logger.log_streaming_start(request_id=request_id)
+                                streaming_started = True
+                            full_answer += content
+                
+                yield item
+            
+            # La sfârșitul stream-ului, finalizăm logging-ul doar dacă l-am început
+            if logging_started:
+                # Extragem token usage-ul final din ultimul extra_info_received
+                final_prompt_token_usage = None
+                if extra_info_received and hasattr(extra_info_received, 'thoughts'):
+                    final_prompt_token_usage = chat_logger._extract_prompt_token_usage(extra_info_received.thoughts)
+                
+                chat_logger.finish_chat_log(
+                    request_id=request_id,
+                    answer=full_answer,
+                    agentic_retrival_duration_seconds=agentic_duration_for_logging,
+                    final_prompt_token_usage=final_prompt_token_usage
+                )
+        
+        response = await make_response(format_as_ndjson(logged_result_generator()))
         response.timeout = None  # type: ignore
         response.mimetype = "application/json-lines"
         return response
     except Exception as error:
         return error_response(error, "/chat")
 
+@bp.route("/api/feedback", methods=["POST"])
+@authenticated
+async def feedback(auth_claims: dict[str, Any]):
+    data = await request.get_json()
+    answer_index = data.get("answerIndex")
+    feedback_type = data.get("feedbackType")
+    feedback_text = data.get("feedbackText")
+    
+    # Logging cu noul nostru sistem
+    user_id = auth_claims.get("oid")
+    conversation_id = data.get("conversationId", "unknown")  # Primit din frontend
+    request_id = data.get("requestId", "unknown")  # Primit din frontend
+    
+    chat_logger.log_feedback(
+        conversation_id=conversation_id,
+        feedback=feedback_type,
+        feedback_text=feedback_text,
+        user_id=user_id,
+        answer_index=answer_index,  # Adăugăm index-ul în logging
+        request_id=request_id  # Adăugăm request_id pentru identificarea precisă
+    )
+    
+    return jsonify({"status": "ok"})
 
 # Send MSAL.js settings to the client UI
 @bp.route("/auth_setup", methods=["GET"])
@@ -312,6 +529,7 @@ def config():
             "showChatHistoryBrowser": current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED],
             "showChatHistoryCosmos": current_app.config[CONFIG_CHAT_HISTORY_COSMOS_ENABLED],
             "showAgenticRetrievalOption": current_app.config[CONFIG_AGENTIC_RETRIEVAL_ENABLED],
+            "showDeveloperFeatures": current_app.config[CONFIG_DEVELOPER_FEATURES_ENABLED],
         }
     )
 
@@ -465,8 +683,8 @@ async def setup_clients():
     AZURE_CLIENT_APP_ID = os.getenv("AZURE_CLIENT_APP_ID")
     AZURE_AUTH_TENANT_ID = os.getenv("AZURE_AUTH_TENANT_ID", AZURE_TENANT_ID)
 
-    KB_FIELDS_CONTENT = os.getenv("KB_FIELDS_CONTENT", "content")
-    KB_FIELDS_SOURCEPAGE = os.getenv("KB_FIELDS_SOURCEPAGE", "sourcepage")
+    KB_FIELDS_CONTENT = "chunk" # os.getenv("KB_FIELDS_CONTENT", "chunk")
+    KB_FIELDS_SOURCEPAGE = "link" # os.getenv("KB_FIELDS_SOURCEPAGE", "page_number")
 
     AZURE_SEARCH_QUERY_LANGUAGE = os.getenv("AZURE_SEARCH_QUERY_LANGUAGE") or "en-us"
     AZURE_SEARCH_QUERY_SPELLER = os.getenv("AZURE_SEARCH_QUERY_SPELLER") or "lexicon"
@@ -488,6 +706,8 @@ async def setup_clients():
     USE_CHAT_HISTORY_BROWSER = os.getenv("USE_CHAT_HISTORY_BROWSER", "").lower() == "true"
     USE_CHAT_HISTORY_COSMOS = os.getenv("USE_CHAT_HISTORY_COSMOS", "").lower() == "true"
     USE_AGENTIC_RETRIEVAL = os.getenv("USE_AGENTIC_RETRIEVAL", "").lower() == "true"
+    ENABLE_DEBUG_LOGGING = os.getenv("ENABLE_DEBUG_LOGGING", "false").lower() == "true"
+    ENABLE_DEVELOPER_FEATURES = os.getenv("ENABLE_DEVELOPER_FEATURES", "false").lower() == "true"
 
     # WEBSITE_HOSTNAME is always set by App Service, RUNNING_IN_PRODUCTION is set in main.bicep
     RUNNING_ON_AZURE = os.getenv("WEBSITE_HOSTNAME") is not None or os.getenv("RUNNING_IN_PRODUCTION") is not None
@@ -682,6 +902,7 @@ async def setup_clients():
     current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED] = USE_CHAT_HISTORY_BROWSER
     current_app.config[CONFIG_CHAT_HISTORY_COSMOS_ENABLED] = USE_CHAT_HISTORY_COSMOS
     current_app.config[CONFIG_AGENTIC_RETRIEVAL_ENABLED] = USE_AGENTIC_RETRIEVAL
+    current_app.config[CONFIG_DEVELOPER_FEATURES_ENABLED] = ENABLE_DEVELOPER_FEATURES
 
     prompt_manager = PromptyManager()
 
@@ -730,6 +951,7 @@ async def setup_clients():
         query_speller=AZURE_SEARCH_QUERY_SPELLER,
         prompt_manager=prompt_manager,
         reasoning_effort=OPENAI_REASONING_EFFORT,
+        enable_debug_logging=ENABLE_DEBUG_LOGGING,
     )
 
     if USE_GPT4V:

@@ -264,8 +264,8 @@ class SearchManager:
                             SemanticConfiguration(
                                 name="default",
                                 prioritized_fields=SemanticPrioritizedFields(
-                                    title_field=SemanticField(field_name="sourcepage"),
-                                    content_fields=[SemanticField(field_name="content")],
+                                    title_field=SemanticField(field_name="link"),
+                                    content_fields=[SemanticField(field_name="chunk")],
                                 ),
                             )
                         ],
@@ -351,7 +351,7 @@ class SearchManager:
                         ):
                             logger.info("Updating semantic configuration for index %s", self.search_info.index_name)
                             existing_semantic_config.prioritized_fields.title_field = SemanticField(
-                                field_name="sourcepage"
+                                field_name="link"
                             )
 
                 if existing_index.vector_search is not None and (
@@ -421,9 +421,9 @@ class SearchManager:
                 documents = [
                     {
                         "id": f"{section.content.filename_to_id()}-page-{section_index + batch_index * MAX_BATCH_SIZE}",
-                        "content": section.split_page.text,
+                        "chunk": section.split_page.text,
                         "category": section.category,
-                        "sourcepage": (
+                        "link": (
                             BlobManager.blob_image_name_from_file_page(
                                 filename=section.content.filename(),
                                 page=section.split_page.page_num,

@@ -74,9 +74,10 @@ export class IndexedDBProvider implements IHistoryProvider {
         return loadedItems;
     }
 
+    // Update addItem to allow feedback fields in answers
     async addItem(id: string, answers: Answers): Promise<void> {
         const timestamp = new Date().getTime();
-        const db = await this.init(); // 自動的に初期化
+        const db = await this.init();
         const tx = db.transaction(this.storeName, "readwrite");
         const current = await tx.objectStore(this.storeName).get(id);
         if (current) {
@@ -93,12 +94,34 @@ export class IndexedDBProvider implements IHistoryProvider {
         const db = await this.init();
         const tx = db.transaction(this.storeName, "readonly");
         const item = await tx.objectStore(this.storeName).get(id);
-        return item ? item.answers : null;
+        if (!item || !item.answers) return null;
+        // Asigură fallback pentru feedbackType/feedbackText
+        const answersWithFeedback: Answers = item.answers.map(([user, response]: [string, any]) => {
+            if (!('feedbackType' in response)) response.feedbackType = undefined;
+            if (!('feedbackText' in response)) response.feedbackText = undefined;
+            return [user, response];
+        });
+        return answersWithFeedback;
     }
 
     async deleteItem(id: string): Promise<void> {
         const db = await this.init();
         await db.delete(this.storeName, id);
+        return;
+    }
+
+    // Add a method to update feedback for a specific answer in a session
+    async updateFeedback(sessionId: string, answerIndex: number, feedbackType: string, feedbackText: string): Promise<void> {
+        const db = await this.init();
+        const tx = db.transaction(this.storeName, "readwrite");
+        const item = await tx.objectStore(this.storeName).get(sessionId);
+        if (item && item.answers && item.answers[answerIndex]) {
+            // Update feedback fields on the response object
+            item.answers[answerIndex][1].feedbackType = feedbackType;
+            item.answers[answerIndex][1].feedbackText = feedbackText;
+            await tx.objectStore(this.storeName).put(item);
+        }
+        await tx.done;
         return;
     }
 }

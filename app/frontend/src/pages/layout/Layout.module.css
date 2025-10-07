@@ -33,6 +33,16 @@
 .headerTitle {
     margin-left: 0.5rem;
     font-weight: 600;
+    color: #fff;
+}
+
+.headerTitleFirst {
+    color: red;
+}
+
+.headerTitleLast2 {
+    font-weight: bold;
+    font-style: italic;
 }
 
 .headerNavList {

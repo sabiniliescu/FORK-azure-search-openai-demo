@@ -16,4 +16,5 @@ export interface IHistoryProvider {
     addItem(id: string, answers: Answers, idToken?: string): Promise<void>;
     getItem(id: string, idToken?: string): Promise<Answers | null>;
     deleteItem(id: string, idToken?: string): Promise<void>;
+    updateFeedback?(sessionId: string, answerIndex: number, feedbackType: string, feedbackText: string): Promise<void>;
 }

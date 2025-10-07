@@ -116,7 +116,9 @@ class RetrieveThenReadVisionApproach(Approach):
         text_sources = []
         image_sources = []
         if send_text_to_gptvision:
-            text_sources = self.get_sources_content(results, use_semantic_captions, use_image_citation=True)
+            # Creează mapping-ul de linkuri pentru optimizarea streaming-ului
+            link_mapping = self.create_link_mapping(results)
+            text_sources = self.get_sources_content(results, use_semantic_captions, use_image_citation=True, link_mapping=link_mapping)
         if send_images_to_gptvision:
             for result in results:
                 url = await fetch_image(self.blob_container_client, result)
@@ -169,6 +171,7 @@ class RetrieveThenReadVisionApproach(Approach):
                     ),
                 ),
             ],
+            link_mapping=link_mapping  # Adaugă mapping-ul în extra_info
         )
 
         return {

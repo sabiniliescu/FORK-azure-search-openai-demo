@@ -59,6 +59,7 @@ export type ResponseContext = {
     data_points: string[];
     followup_questions: string[] | null;
     thoughts: Thoughts[];
+    link_mapping?: { [key: string]: string };
 };
 
 export type ChatAppResponseOrError = {
@@ -74,6 +75,13 @@ export type ChatAppResponse = {
     delta: ResponseMessage;
     context: ResponseContext;
     session_state: any;
+    feedbackType?: string;
+    feedbackText?: string;
+    tracking?: {
+        request_id?: string;
+        session_id?: string;
+        conversation_id?: string;
+    };
 };
 
 export type ChatAppRequestContext = {
@@ -102,6 +110,7 @@ export type Config = {
     showChatHistoryBrowser: boolean;
     showChatHistoryCosmos: boolean;
     showAgenticRetrievalOption: boolean;
+    showDeveloperFeatures: boolean;
 };
 
 export type SimpleAPIResponse = {
