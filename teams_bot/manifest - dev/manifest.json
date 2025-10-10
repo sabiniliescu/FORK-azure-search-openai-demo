@@ -1,0 +1,59 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "2.0.1",
+  "id": "e2a1c7b3-4f5e-4c6d-9e2a-8b7f2c1d4a5e",
+  "packageName": "MihAIDev",
+  "developer": {
+    "name": "Libra Internet Bank",
+    "websiteUrl": "https://librahome/libragpt",
+    "privacyUrl": "https://librahome/libragpt",
+    "termsOfUseUrl": "https://librahome/libragpt"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "MihAIDev",
+    "full": "MihAI. Stie tot despre documentele Libra"
+  },
+  "description": {
+    "short": "Identifică informații din Librahome",
+    "full": "Asistent virtual inteligent care răspunde la întrebări din toate documentele valide incarcate pe Librahome"
+  },
+  "accentColor": "#FFFFFF",
+  "bots": [
+    {
+      "botId": "1340ed9c-8b5d-46ab-8c99-d2d5031eb947",
+      "scopes": [
+        "personal",
+        "team",
+        "groupchat"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "personal",
+            "team",
+            "groupchat"
+          ],
+          "commands": []
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "teamsbot-mihai-mi.azurewebsites.net"
+  ],
+  "webApplicationInfo": {
+    "id": "1340ed9c-8b5d-46ab-8c99-d2d5031eb947",
+    "resource": "api://teamsbot-mihai-mi.azurewebsites.net/1340ed9c-8b5d-46ab-8c99-d2d5031eb947"
+  }
+}

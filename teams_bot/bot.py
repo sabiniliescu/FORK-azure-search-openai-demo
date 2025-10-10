@@ -134,12 +134,12 @@ class TeamsBot(ActivityHandler):
             for member in members_added:
                 if member.id != turn_context.activity.recipient.id:
                     welcome_message = (
-                        "👋 Bun venit! Sunt asistentul tău virtual.\n\n"
+                        "👋 Salut! Sunt MihAI si stiu tot despre documentele din LibraHome.\n\n"
                         "Poți să-mi pui întrebări despre:\n"
-                        "- Beneficiile companiei\n"
-                        "- Politicile interne\n"
-                        "- Descrieri de posturi\n"
-                        "- Orice altceva din documentele companiei\n\n"
+                        "- Reglementari\n"
+                        "- Manuale\n"
+                        "- Fluxuri\n"
+                        "- Orice altceva din documentele incarcate in LibraHome\n\n"
                         "Cum te pot ajuta astăzi?"
                     )
                     await turn_context.send_activity(welcome_message)
